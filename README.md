@@ -2,6 +2,37 @@
 
 Welcome to the ABDM Hospital System! This is your main entry point to all documentation and scripts.
 
+## ⚠️ Important Notice - Development Prototype
+
+**This is a development prototype and educational demonstration of the ABDM architecture.**
+
+### Known Limitations
+
+- **In-Memory State**: The gateway uses in-memory dictionaries for webhook tracking and some request state. This data is lost on server restart and is NOT suitable for production deployment.
+- **No Persistent Queue**: Background task processing uses in-memory queues without persistence. Failed tasks may be lost on crashes.
+- **Simplified Security**: While JWT-based authentication is implemented, production deployments require:
+  - Rate limiting and DDoS protection
+  - Certificate-based mutual TLS for HIP/HIU communication
+  - Comprehensive audit logging
+  - Secret management (credentials should not be in code)
+
+### Production Readiness Checklist
+
+Before deploying to production, you must:
+
+1. ✅ Replace in-memory state with persistent storage (Redis, PostgreSQL, etc.)
+2. ✅ Implement persistent message queue (RabbitMQ, Kafka, AWS SQS)
+3. ✅ Add rate limiting and request throttling
+4. ✅ Implement comprehensive logging and monitoring
+5. ✅ Use environment-based configuration management
+6. ✅ Add health checks and circuit breakers
+7. ✅ Implement proper secret management (AWS Secrets Manager, HashiCorp Vault)
+8. ✅ Set up API gateway with WAF for production traffic
+9. ✅ Add comprehensive test coverage (unit, integration, E2E)
+10. ✅ Perform security audit and penetration testing
+
+---
+
 ## 📚 Documentation Files
 
 ### 1. **QUICK_START.md** ⚡
