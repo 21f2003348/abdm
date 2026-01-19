@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ABDM Status - ABDM Hospital</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="index.html">
+          <i class="fas fa-hospital-alt"></i> ABDM Hospital
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="index.html"
+                ><i class="fas fa-home"></i> Dashboard</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="patients.html"
+                ><i class="fas fa-user-injured"></i> Patients</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="visits.html"
+                ><i class="fas fa-calendar-check"></i> Visits</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="health-records.html"
+                ><i class="fas fa-file-medical"></i> Health Records</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="abdm-status.html"
+                ><i class="fas fa-heartbeat"></i> ABDM Status</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+      <div class="row mb-4">
+        <div class="col-12">
+          <h2>
+            <i class="fas fa-heartbeat text-primary"></i> ABDM Integration
+            Status
+          </h2>
+          <p class="text-muted">
+            Monitor gateway connection and webhook activity
+          </p>
+        </div>
+      </div>
+
+      <!-- Status Cards -->
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card stat-card">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="text-muted">Gateway Status</h6>
+                  <h3 id="gatewayStatus">
+                    <span class="status-dot status-connecting"></span>
+                    Checking...
+                  </h3>
+                </div>
+                <i class="fas fa-server fa-2x text-primary"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card stat-card">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="text-muted">Bridge Status</h6>
+                  <h3 id="bridgeStatus">
+                    <span class="spinner-border spinner-border-sm"></span>
+                  </h3>
+                </div>
+                <i class="fas fa-link fa-2x text-success"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card stat-card">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="text-muted">Pending Webhooks</h6>
+                  <h3 id="pendingWebhooks">
+                    <span class="spinner-border spinner-border-sm"></span>
+                  </h3>
+                </div>
+                <i class="fas fa-bell fa-2x text-warning"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card stat-card">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="text-muted">Active Consents</h6>
+                  <h3 id="activeConsents">
+                    <span class="spinner-border spinner-border-sm"></span>
+                  </h3>
+                </div>
+                <i class="fas fa-shield-alt fa-2x text-info"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gateway Details and Webhook Queue -->
+      <div class="row mb-4">
+        <!-- Gateway Details -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">
+                <i class="fas fa-info-circle"></i> Gateway Configuration
+              </h5>
+            </div>
+            <div class="card-body">
+              <table class="table table-sm">
+                <tbody>
+                  <tr>
+                    <td><strong>Gateway URL:</strong></td>
+                    <td id="gatewayUrl">http://127.0.0.1:8000</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Hospital URL:</strong></td>
+                    <td id="hospitalUrl">http://127.0.0.1:8080</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Client ID:</strong></td>
+                    <td id="clientId">client-001</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Last Health Check:</strong></td>
+                    <td id="lastHealthCheck">-</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Authentication:</strong></td>
+                    <td id="authStatus">
+                      <span class="badge bg-secondary">Not Checked</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="d-grid gap-2">
+                <button class="btn btn-primary" id="testConnectionBtn">
+                  <i class="fas fa-plug"></i> Test Connection
+                </button>
+                <button class="btn btn-success" id="refreshBridgeBtn">
+                  <i class="fas fa-sync"></i> Refresh Bridge
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Webhook Queue -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header bg-warning text-dark">
+              <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Webhook Queue</h5>
+                <button class="btn btn-sm btn-danger" id="clearQueueBtn">
+                  <i class="fas fa-trash"></i> Clear All
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div
+                id="webhookQueueContent"
+                style="max-height: 300px; overflow-y: auto"
+              >
+                <div class="text-center">
+                  <div class="spinner-border text-warning" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Webhook Activity Log -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header bg-info text-white">
+              <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                  <i class="fas fa-history"></i> Webhook Activity Log (Last 24
+                  Hours)
+                </h5>
+                <button class="btn btn-sm btn-light" id="refreshLogBtn">
+                  <i class="fas fa-sync"></i> Refresh
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Type</th>
+                      <th>Event</th>
+                      <th>Patient ID</th>
+                      <th>Status</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="webhookLogTableBody">
+                    <tr>
+                      <td colspan="6" class="text-center">
+                        <div class="spinner-border text-info" role="status">
+                          <span class="visually-hidden">Loading...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Webhook Details Modal -->
+    <div class="modal fade" id="webhookDetailsModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Webhook Details</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <strong>Webhook ID:</strong> <span id="detailWebhookId"></span>
+              </div>
+              <div class="col-md-6">
+                <strong>Type:</strong>
+                <span id="detailWebhookType" class="badge"></span>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <strong>Received At:</strong>
+                <span id="detailReceivedAt"></span>
+              </div>
+              <div class="col-md-6">
+                <strong>Status:</strong>
+                <span id="detailWebhookStatus" class="badge"></span>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-12">
+                <strong>Payload:</strong>
+                <pre
+                  id="detailWebhookPayload"
+                  class="bg-light p-3 mt-2"
+                  style="
+                    max-height: 400px;
+                    overflow-y: auto;
+                    font-size: 0.85rem;
+                  "
+                ></pre>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/abdm-status.js"></script>
+  </body>
+</html>

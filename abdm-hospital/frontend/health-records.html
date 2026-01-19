@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Health Records - ABDM Hospital</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="index.html">
+          <i class="fas fa-hospital-alt"></i> ABDM Hospital
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="index.html"
+                ><i class="fas fa-home"></i> Dashboard</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="patients.html"
+                ><i class="fas fa-user-injured"></i> Patients</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="visits.html"
+                ><i class="fas fa-calendar-check"></i> Visits</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="health-records.html"
+                ><i class="fas fa-file-medical"></i> Health Records</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="abdm-status.html"
+                ><i class="fas fa-heartbeat"></i> ABDM Status</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+      <div class="row mb-4">
+        <div class="col-12">
+          <h2>
+            <i class="fas fa-file-medical text-primary"></i> Health Records
+            Management
+          </h2>
+          <p class="text-muted">Create and manage patient health records</p>
+        </div>
+      </div>
+
+      <div class="row">
+        <!-- Create Health Record Form -->
+        <div class="col-md-4">
+          <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">
+                <i class="fas fa-plus-circle"></i> Create Health Record
+              </h5>
+            </div>
+            <div class="card-body">
+              <form id="createHealthRecordForm">
+                <div class="mb-3">
+                  <label for="patientId" class="form-label"
+                    >Patient ID <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="patientId"
+                    name="patientId"
+                    required
+                  />
+                  <small class="form-text text-muted"
+                    >Or
+                    <a href="#" id="searchPatientLink"
+                      >search by mobile</a
+                    ></small
+                  >
+                </div>
+                <div class="mb-3">
+                  <label for="visitId" class="form-label"
+                    >Visit ID (Optional)</label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="visitId"
+                    name="visitId"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label for="contextId" class="form-label"
+                    >Care Context ID (Optional)</label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="contextId"
+                    name="contextId"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label for="recordType" class="form-label"
+                    >Record Type <span class="text-danger">*</span></label
+                  >
+                  <select
+                    class="form-select"
+                    id="recordType"
+                    name="recordType"
+                    required
+                  >
+                    <option value="">Select Type</option>
+                    <option value="Prescription">Prescription</option>
+                    <option value="Lab Report">Lab Report</option>
+                    <option value="Radiology">Radiology/Imaging</option>
+                    <option value="Discharge Summary">Discharge Summary</option>
+                    <option value="OPD Note">OPD Note</option>
+                    <option value="Progress Note">Progress Note</option>
+                    <option value="Operative Note">Operative Note</option>
+                    <option value="Consultation">Consultation Note</option>
+                    <option value="Vaccination">Vaccination Record</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="recordDate" class="form-label"
+                    >Record Date <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="date"
+                    class="form-control"
+                    id="recordDate"
+                    name="recordDate"
+                    required
+                  />
+                </div>
+                <div class="mb-3">
+                  <label for="title" class="form-label"
+                    >Title <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="title"
+                    name="title"
+                    required
+                    placeholder="e.g., Blood Test Results"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label for="content" class="form-label">Content/Notes</label>
+                  <textarea
+                    class="form-control"
+                    id="content"
+                    name="content"
+                    rows="4"
+                    placeholder="Enter record details"
+                  ></textarea>
+                </div>
+                <div class="mb-3">
+                  <label for="doctorName" class="form-label">Doctor Name</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="doctorName"
+                    name="doctorName"
+                    placeholder="Dr. Name"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label for="department" class="form-label">Department</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="department"
+                    name="department"
+                    placeholder="e.g., Cardiology"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label for="fileUrl" class="form-label"
+                    >File URL (Optional)</label
+                  >
+                  <input
+                    type="url"
+                    class="form-control"
+                    id="fileUrl"
+                    name="fileUrl"
+                    placeholder="https://..."
+                  />
+                  <small class="form-text text-muted"
+                    >Link to external file if applicable</small
+                  >
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                  <i class="fas fa-save"></i> Create Record
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Quick Info Card -->
+          <div class="card">
+            <div class="card-header bg-info text-white">
+              <h6 class="mb-0">
+                <i class="fas fa-info-circle"></i> Record Types
+              </h6>
+            </div>
+            <div class="card-body">
+              <ul class="small mb-0">
+                <li><strong>Prescription:</strong> Medication details</li>
+                <li><strong>Lab Report:</strong> Test results</li>
+                <li><strong>Radiology:</strong> X-ray, CT, MRI reports</li>
+                <li><strong>Discharge Summary:</strong> IPD summary</li>
+                <li><strong>OPD Note:</strong> Consultation notes</li>
+                <li><strong>Operative Note:</strong> Surgery details</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Health Records List -->
+        <div class="col-md-8">
+          <!-- Filter Card -->
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label for="filterPatientId" class="form-label"
+                    >Patient ID</label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="filterPatientId"
+                    placeholder="Filter by patient"
+                  />
+                </div>
+                <div class="col-md-3">
+                  <label for="filterRecordType" class="form-label"
+                    >Record Type</label
+                  >
+                  <select class="form-select" id="filterRecordType">
+                    <option value="">All Types</option>
+                    <option value="Prescription">Prescription</option>
+                    <option value="Lab Report">Lab Report</option>
+                    <option value="Radiology">Radiology</option>
+                    <option value="Discharge Summary">Discharge Summary</option>
+                    <option value="OPD Note">OPD Note</option>
+                    <option value="Progress Note">Progress Note</option>
+                    <option value="Operative Note">Operative Note</option>
+                    <option value="Consultation">Consultation</option>
+                    <option value="Vaccination">Vaccination</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label for="filterStartDate" class="form-label"
+                    >From Date</label
+                  >
+                  <input
+                    type="date"
+                    class="form-control"
+                    id="filterStartDate"
+                  />
+                </div>
+                <div class="col-md-3">
+                  <label for="filterEndDate" class="form-label">To Date</label>
+                  <input type="date" class="form-control" id="filterEndDate" />
+                </div>
+              </div>
+              <div class="row mt-3">
+                <div class="col-12">
+                  <button class="btn btn-primary" id="applyFiltersBtn">
+                    <i class="fas fa-filter"></i> Apply Filters
+                  </button>
+                  <button class="btn btn-secondary" id="clearFiltersBtn">
+                    <i class="fas fa-times"></i> Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Health Records Table -->
+          <div class="card">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">
+                <i class="fas fa-list"></i> All Health Records (<span
+                  id="recordCount"
+                  >0</span
+                >)
+              </h5>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Record ID</th>
+                      <th>Patient</th>
+                      <th>Title</th>
+                      <th>Type</th>
+                      <th>Date</th>
+                      <th>Doctor</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="healthRecordsTableBody">
+                    <tr>
+                      <td colspan="7" class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                          <span class="visually-hidden">Loading...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Health Record Details Modal -->
+    <div class="modal fade" id="recordDetailsModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Health Record Details</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div id="recordDetailsContent">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Record ID:</strong> <span id="detailRecordId"></span>
+                </div>
+                <div class="col-md-6">
+                  <strong>Record Type:</strong>
+                  <span id="detailRecordType" class="badge bg-info"></span>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Patient ID:</strong>
+                  <span id="detailPatientId"></span>
+                </div>
+                <div class="col-md-6">
+                  <strong>Patient Name:</strong>
+                  <span id="detailPatientName"></span>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Visit ID:</strong> <span id="detailVisitId"></span>
+                </div>
+                <div class="col-md-6">
+                  <strong>Care Context ID:</strong>
+                  <span id="detailContextId"></span>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Record Date:</strong>
+                  <span id="detailRecordDate"></span>
+                </div>
+                <div class="col-md-6">
+                  <strong>Title:</strong> <span id="detailTitle"></span>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Doctor:</strong> <span id="detailDoctorName"></span>
+                </div>
+                <div class="col-md-6">
+                  <strong>Department:</strong>
+                  <span id="detailDepartment"></span>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-12">
+                  <strong>Content:</strong>
+                  <div class="mt-2 p-3 bg-light rounded">
+                    <pre
+                      id="detailContent"
+                      class="mb-0"
+                      style="white-space: pre-wrap; font-size: 0.9rem"
+                    ></pre>
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-3" id="fileUrlSection" style="display: none">
+                <div class="col-12">
+                  <strong>File:</strong>
+                  <div class="mt-2">
+                    <a
+                      id="detailFileUrl"
+                      href="#"
+                      target="_blank"
+                      class="btn btn-sm btn-outline-primary"
+                    >
+                      <i class="fas fa-external-link-alt"></i> View File
+                    </a>
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Created At:</strong>
+                  <span id="detailCreatedAt"></span>
+                </div>
+                <div class="col-md-6">
+                  <strong>Updated At:</strong>
+                  <span id="detailUpdatedAt"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Patient Search Modal -->
+    <div class="modal fade" id="patientSearchModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Search Patient</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="searchMobile" class="form-label">Mobile Number</label>
+              <input
+                type="tel"
+                class="form-control"
+                id="searchMobile"
+                placeholder="10-digit mobile"
+              />
+            </div>
+            <button type="button" class="btn btn-primary" id="searchPatientBtn">
+              <i class="fas fa-search"></i> Search
+            </button>
+            <div id="searchResults" class="mt-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/health-records.js"></script>
+  </body>
+</html>

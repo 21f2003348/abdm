@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ABDM Hospital Management System</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link href="/static/css/style.css" rel="stylesheet" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="index.html">
+          <i class="fas fa-hospital"></i> ABDM Hospital
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link active" href="index.html">Dashboard</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="patients.html">Patients</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="visits.html">Visits</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="health-records.html">Health Records</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="patient-history.html"
+                >Patient History</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="abdm-status.html">ABDM Status</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+      <div class="row">
+        <!-- Header -->
+        <div class="col-12 mb-4">
+          <h2><i class="fas fa-tachometer-alt"></i> Hospital Dashboard</h2>
+          <p class="text-muted">
+            Manage patients, visits, and ABDM integration
+          </p>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="col-md-3 mb-4">
+          <div class="card stat-card bg-primary text-white">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="card-title">Total Patients</h6>
+                  <h2 id="totalPatients">-</h2>
+                </div>
+                <div class="stat-icon">
+                  <i class="fas fa-users fa-3x opacity-50"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+          <div class="card stat-card bg-success text-white">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="card-title">Active Visits</h6>
+                  <h2 id="activeVisits">-</h2>
+                </div>
+                <div class="stat-icon">
+                  <i class="fas fa-calendar-check fa-3x opacity-50"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+          <div class="card stat-card bg-info text-white">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="card-title">Care Contexts</h6>
+                  <h2 id="careContexts">-</h2>
+                </div>
+                <div class="stat-icon">
+                  <i class="fas fa-file-medical fa-3x opacity-50"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+          <div class="card stat-card bg-warning text-white">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="card-title">ABDM Status</h6>
+                  <h5 id="abdmStatus">Checking...</h5>
+                </div>
+                <div class="stat-icon">
+                  <i class="fas fa-heartbeat fa-3x opacity-50"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <h4 class="mb-3"><i class="fas fa-bolt"></i> Quick Actions</h4>
+        </div>
+        <div class="col-md-3 mb-3">
+          <a href="patients.html" class="btn btn-outline-primary w-100 p-3">
+            <i class="fas fa-user-plus fa-2x mb-2"></i>
+            <br />Register New Patient
+          </a>
+        </div>
+        <div class="col-md-3 mb-3">
+          <a href="visits.html" class="btn btn-outline-success w-100 p-3">
+            <i class="fas fa-calendar-plus fa-2x mb-2"></i>
+            <br />Create Visit
+          </a>
+        </div>
+        <div class="col-md-3 mb-3">
+          <a href="care-contexts.html" class="btn btn-outline-info w-100 p-3">
+            <i class="fas fa-link fa-2x mb-2"></i>
+            <br />Link Care Context
+          </a>
+        </div>
+        <div class="col-md-3 mb-3">
+          <a
+            href="health-records.html"
+            class="btn btn-outline-warning w-100 p-3"
+          >
+            <i class="fas fa-file-upload fa-2x mb-2"></i>
+            <br />Upload Records
+          </a>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="row">
+        <div class="col-md-6 mb-4">
+          <div class="card">
+            <div class="card-header bg-light">
+              <h5 class="mb-0"><i class="fas fa-clock"></i> Recent Patients</h5>
+            </div>
+            <div class="card-body">
+              <div id="recentPatients" class="list-group">
+                <div class="text-center text-muted py-3">
+                  <div class="spinner-border spinner-border-sm me-2"></div>
+                  Loading...
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+          <div class="card">
+            <div class="card-header bg-light">
+              <h5 class="mb-0">
+                <i class="fas fa-bell"></i> System Notifications
+              </h5>
+            </div>
+            <div class="card-body">
+              <div id="notifications" class="list-group">
+                <div class="alert alert-info mb-2">
+                  <i class="fas fa-info-circle"></i> System is running normally
+                </div>
+                <div id="webhookNotifications"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+  </body>
+</html>

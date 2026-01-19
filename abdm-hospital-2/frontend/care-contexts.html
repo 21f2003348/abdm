@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Care Contexts - ABDM Hospital</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="index.html">
+          <i class="fas fa-hospital-alt"></i> ABDM Hospital
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="index.html"
+                ><i class="fas fa-home"></i> Dashboard</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="patients.html"
+                ><i class="fas fa-user-injured"></i> Patients</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="visits.html"
+                ><i class="fas fa-calendar-check"></i> Visits</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="care-contexts.html"
+                ><i class="fas fa-link"></i> Care Contexts</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="health-records.html"
+                ><i class="fas fa-file-medical"></i> Health Records</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="abdm-status.html"
+                ><i class="fas fa-heartbeat"></i> ABDM Status</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+      <div class="row mb-4">
+        <div class="col-12">
+          <h2>
+            <i class="fas fa-link text-primary"></i> Care Contexts Management
+          </h2>
+          <p class="text-muted">Link patient care contexts with ABDM Gateway</p>
+        </div>
+      </div>
+
+      <div class="row">
+        <!-- Create Care Context Form -->
+        <div class="col-md-4">
+          <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">
+                <i class="fas fa-plus-circle"></i> Create & Link Care Context
+              </h5>
+            </div>
+            <div class="card-body">
+              <form id="createCareContextForm">
+                <div class="mb-3">
+                  <label for="patientId" class="form-label"
+                    >Patient ID <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="patientId"
+                    name="patientId"
+                    required
+                  />
+                  <small class="form-text text-muted"
+                    >Or
+                    <a href="#" id="searchPatientLink"
+                      >search by mobile</a
+                    ></small
+                  >
+                </div>
+                <div class="mb-3">
+                  <label for="visitId" class="form-label"
+                    >Visit ID (Optional)</label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="visitId"
+                    name="visitId"
+                  />
+                  <small class="form-text text-muted"
+                    >Link to existing visit</small
+                  >
+                </div>
+                <div class="mb-3">
+                  <label for="contextName" class="form-label"
+                    >Context Name <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="contextName"
+                    name="contextName"
+                    required
+                    placeholder="e.g., OPD-2024-001"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label for="contextType" class="form-label"
+                    >Context Type <span class="text-danger">*</span></label
+                  >
+                  <select
+                    class="form-select"
+                    id="contextType"
+                    name="contextType"
+                    required
+                  >
+                    <option value="">Select Type</option>
+                    <option value="OPD">OPD Visit</option>
+                    <option value="IPD">IPD Admission</option>
+                    <option value="Emergency">Emergency Visit</option>
+                    <option value="Lab">Laboratory Test</option>
+                    <option value="Imaging">Imaging Study</option>
+                    <option value="Prescription">Prescription</option>
+                    <option value="Discharge">Discharge Summary</option>
+                    <option value="Consultation">Consultation</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="description" class="form-label"
+                    >Description</label
+                  >
+                  <textarea
+                    class="form-control"
+                    id="description"
+                    name="description"
+                    rows="3"
+                    placeholder="Brief description of care context"
+                  ></textarea>
+                </div>
+                <div class="mb-3">
+                  <label for="hipId" class="form-label">HIP ID</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="hipId"
+                    name="hipId"
+                    placeholder="Health Information Provider ID"
+                  />
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                  <i class="fas fa-link"></i> Create & Link to ABDM
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Info Card -->
+          <div class="card">
+            <div class="card-header bg-info text-white">
+              <h6 class="mb-0">
+                <i class="fas fa-info-circle"></i> About Care Contexts
+              </h6>
+            </div>
+            <div class="card-body">
+              <p class="small">
+                Care contexts represent specific episodes of care for a patient.
+                Each context:
+              </p>
+              <ul class="small">
+                <li>Links patient data to ABDM Gateway</li>
+                <li>Enables secure data sharing</li>
+                <li>Maintains audit trail</li>
+                <li>Supports consent-based access</li>
+              </ul>
+              <p class="small mb-0">
+                <strong>Note:</strong> Patient must have ABHA ID for linking.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Care Contexts List -->
+        <div class="col-md-8">
+          <!-- Filter Card -->
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label for="filterPatientId" class="form-label"
+                    >Patient ID</label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="filterPatientId"
+                    placeholder="Filter by patient"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label for="filterContextType" class="form-label"
+                    >Context Type</label
+                  >
+                  <select class="form-select" id="filterContextType">
+                    <option value="">All Types</option>
+                    <option value="OPD">OPD Visit</option>
+                    <option value="IPD">IPD Admission</option>
+                    <option value="Emergency">Emergency Visit</option>
+                    <option value="Lab">Laboratory Test</option>
+                    <option value="Imaging">Imaging Study</option>
+                    <option value="Prescription">Prescription</option>
+                    <option value="Discharge">Discharge Summary</option>
+                    <option value="Consultation">Consultation</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label for="filterLinkingStatus" class="form-label"
+                    >Linking Status</label
+                  >
+                  <select class="form-select" id="filterLinkingStatus">
+                    <option value="">All Status</option>
+                    <option value="linked">Linked</option>
+                    <option value="pending">Pending</option>
+                    <option value="failed">Failed</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row mt-3">
+                <div class="col-12">
+                  <button class="btn btn-primary" id="applyFiltersBtn">
+                    <i class="fas fa-filter"></i> Apply Filters
+                  </button>
+                  <button class="btn btn-secondary" id="clearFiltersBtn">
+                    <i class="fas fa-times"></i> Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Care Contexts Table -->
+          <div class="card">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">
+                <i class="fas fa-list"></i> All Care Contexts (<span
+                  id="contextCount"
+                  >0</span
+                >)
+              </h5>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Context ID</th>
+                      <th>Patient</th>
+                      <th>Context Name</th>
+                      <th>Type</th>
+                      <th>Visit ID</th>
+                      <th>Linking Status</th>
+                      <th>Created</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="careContextsTableBody">
+                    <tr>
+                      <td colspan="8" class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                          <span class="visually-hidden">Loading...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Care Context Details Modal -->
+    <div class="modal fade" id="contextDetailsModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Care Context Details</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div id="contextDetailsContent">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Context ID:</strong>
+                  <span id="detailContextId"></span>
+                </div>
+                <div class="col-md-6">
+                  <strong>Linking Status:</strong>
+                  <span id="detailLinkingStatus" class="badge"></span>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Patient ID:</strong>
+                  <span id="detailPatientId"></span>
+                </div>
+                <div class="col-md-6">
+                  <strong>Patient Name:</strong>
+                  <span id="detailPatientName"></span>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Context Name:</strong>
+                  <span id="detailContextName"></span>
+                </div>
+                <div class="col-md-6">
+                  <strong>Context Type:</strong>
+                  <span id="detailContextType"></span>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Visit ID:</strong> <span id="detailVisitId"></span>
+                </div>
+                <div class="col-md-6">
+                  <strong>HIP ID:</strong> <span id="detailHipId"></span>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-12">
+                  <strong>Description:</strong>
+                  <p id="detailDescription" class="mt-2"></p>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <strong>Created At:</strong>
+                  <span id="detailCreatedAt"></span>
+                </div>
+                <div class="col-md-6">
+                  <strong>Updated At:</strong>
+                  <span id="detailUpdatedAt"></span>
+                </div>
+              </div>
+              <div
+                class="row mb-3"
+                id="linkingErrorSection"
+                style="display: none"
+              >
+                <div class="col-12">
+                  <strong>Linking Error:</strong>
+                  <div
+                    class="alert alert-danger mt-2"
+                    id="detailLinkingError"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              class="btn btn-success"
+              id="addHealthRecordBtn"
+            >
+              <i class="fas fa-file-medical"></i> Add Health Record
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Patient Search Modal -->
+    <div class="modal fade" id="patientSearchModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Search Patient</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="searchMobile" class="form-label">Mobile Number</label>
+              <input
+                type="tel"
+                class="form-control"
+                id="searchMobile"
+                placeholder="10-digit mobile"
+              />
+            </div>
+            <button type="button" class="btn btn-primary" id="searchPatientBtn">
+              <i class="fas fa-search"></i> Search
+            </button>
+            <div id="searchResults" class="mt-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/care-contexts.js"></script>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+cd D:\RVCE\2nd-Year\3rd-Sem-class-notes\Main-EL-3-Sem\Model_testing\ABDM\abdm-gateway
+.venv/Scripts/Activate
+uvicorn app.main:app --reload --port 8000
+
+
+cd abdm-hospital
+uvicorn app.main:app --reload --port 8001

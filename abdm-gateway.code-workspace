@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "../abdm-gateway"
+		},
+		{
+			"path": "../abdm-hospital"
+		}
+	],
+	"settings": {}
+}
