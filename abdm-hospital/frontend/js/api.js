@@ -124,6 +124,9 @@ const api = {
     async list() {
       return api.get("/api/visit/list");
     },
+    async getActive() {
+      return api.get("/api/visit/active");
+    },
   },
 
   // Care Context APIs
@@ -139,13 +142,38 @@ const api = {
   // Health Records APIs
   healthRecords: {
     async create(data) {
-      return api.post(`/api/health-records/${data.patient_id}`, data);
+      const patientId = data.patientId || data.patient_id;
+      if (!patientId) {
+        throw new Error("patientId is required to create a health record");
+      }
+
+      const payload = {
+        recordType: data.recordType,
+        recordDate: data.recordDate,
+        data: data.data || {
+          title: data.title,
+          content: data.content,
+          doctorName: data.doctorName,
+          department: data.department,
+          fileUrl: data.fileUrl,
+        },
+        dataText: data.dataText || data.content || null,
+      };
+
+      return api.post(`/api/health-records/${patientId}`, payload);
     },
     async getByPatient(patientId) {
       return api.get(`/api/health-records/${patientId}`);
     },
     async list() {
-      return api.get("/api/health-records/");
+      return api.get("/api/health-records/all");
+    },
+  },
+
+  // Consent APIs
+  consent: {
+    async init(data) {
+      return api.post("/api/consent/init", data);
     },
   },
 
@@ -236,7 +264,9 @@ const utils = {
 
   // Format date
   formatDate(dateString) {
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
     return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",

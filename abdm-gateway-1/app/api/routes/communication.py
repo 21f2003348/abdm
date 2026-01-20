@@ -55,7 +55,7 @@ async def request_patient_data(
     
     # Use the refactored data service
     result = await request_health_info(
-        patient_id=body.patientId,
+        patient_abha_id=body.patientId,
         hip_id=body.hipId,
         hiu_id=body.hiuId,
         consent_id=body.consentId,
@@ -147,7 +147,7 @@ async def get_bridge_messages(
         "transfers": [
             {
                 "transferId": t.transfer_id,
-                "patientId": t.patient_id,
+                "patientId": t.patient_abha_id,
                 "consentId": t.consent_request_id,
                 "fromEntity": t.from_entity,
                 "toEntity": t.to_entity,

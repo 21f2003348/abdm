@@ -19,7 +19,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
       <div class="container-fluid">
         <a class="navbar-brand" href="index.html">
-          <i class="fas fa-hospital-alt"></i> ABDM Hospital
+          <i class="fas fa-hospital"></i> ABDM Hospital
         </a>
         <button
           class="navbar-toggler"
@@ -49,6 +49,11 @@
             <li class="nav-item">
               <a class="nav-link" href="health-records.html"
                 ><i class="fas fa-file-medical"></i> Health Records</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="patient-history.html"
+                ><i class="fas fa-history"></i> Patient History</a
               >
             </li>
             <li class="nav-item">
@@ -83,9 +88,22 @@
             </div>
             <div class="card-body">
               <form id="createVisitForm">
-                <!-- Patient Search Section -->
+                <!-- Patient Dropdown Selection -->
                 <div class="mb-3">
-                  <label class="form-label">Search Patient <span class="text-danger">*</span></label>
+                  <label for="patientDropdown" class="form-label">
+                    Select Patient <span class="text-danger">*</span>
+                  </label>
+                  <select class="form-select" id="patientDropdown" required>
+                    <option value="">-- Select Patient --</option>
+                  </select>
+                  <small class="text-muted"
+                    >Choose a patient from the list</small
+                  >
+                  <div id="patientDropdownStatus" class="form-text"></div>
+                </div>
+                <!-- OR Search Patient Section -->
+                <div class="mb-3">
+                  <label class="form-label">OR Search Patient</label>
                   <div class="input-group">
                     <select class="form-select" id="searchType">
                       <option value="mobile">Mobile No</option>
@@ -97,19 +115,32 @@
                       id="patientSearchInput"
                       placeholder="Enter mobile or Aadhaar"
                     />
-                    <button type="button" class="btn btn-outline-primary" id="searchPatientBtn">
+                    <button
+                      type="button"
+                      class="btn btn-outline-primary"
+                      id="searchPatientBtn"
+                    >
                       <i class="fas fa-search"></i>
                     </button>
                   </div>
+                  <small class="text-muted"
+                    >Alternative: Search by mobile or Aadhaar number</small
+                  >
                 </div>
 
                 <!-- Patient Details (Auto-filled) -->
-                <div class="mb-3" id="patientDetailsDiv" style="display: none;">
+                <div class="mb-3" id="patientDetailsDiv" style="display: none">
                   <div class="alert alert-info">
                     <h6>Selected Patient:</h6>
-                    <p class="mb-1"><strong>Name:</strong> <span id="patientName"></span></p>
-                    <p class="mb-1"><strong>Mobile:</strong> <span id="patientMobile"></span></p>
-                    <p class="mb-0"><strong>ABHA ID:</strong> <span id="patientAbha"></span></p>
+                    <p class="mb-1">
+                      <strong>Name:</strong> <span id="patientName"></span>
+                    </p>
+                    <p class="mb-1">
+                      <strong>Mobile:</strong> <span id="patientMobile"></span>
+                    </p>
+                    <p class="mb-0">
+                      <strong>ABHA ID:</strong> <span id="patientAbha"></span>
+                    </p>
                   </div>
                   <input type="hidden" id="patientId" name="patientId" />
                 </div>
@@ -147,7 +178,9 @@
                   </select>
                 </div>
                 <div class="mb-3">
-                  <label for="department" class="form-label">Department <span class="text-danger">*</span></label>
+                  <label for="department" class="form-label"
+                    >Department <span class="text-danger">*</span></label
+                  >
                   <select
                     class="form-select"
                     id="department"
@@ -169,24 +202,39 @@
                 </div>
                 <div class="mb-3">
                   <label for="doctor" class="form-label">Doctor Name</label>
-                  <select
-                    class="form-select"
-                    id="doctor"
-                    name="doctor"
-                  >
+                  <select class="form-select" id="doctor" name="doctor">
                     <option value="">Select Doctor</option>
-                    <option value="Dr. Amit Sharma">Dr. Amit Sharma (Cardiology)</option>
-                    <option value="Dr. Priya Verma">Dr. Priya Verma (Neurology)</option>
-                    <option value="Dr. Rajesh Kumar">Dr. Rajesh Kumar (Orthopedics)</option>
-                    <option value="Dr. Sunita Rao">Dr. Sunita Rao (Pediatrics)</option>
-                    <option value="Dr. Kavita Singh">Dr. Kavita Singh (Gynecology)</option>
-                    <option value="Dr. Anil Mehta">Dr. Anil Mehta (Psychiatry)</option>
-                    <option value="Dr. Deepak Joshi">Dr. Deepak Joshi (General Medicine)</option>
-                    <option value="Dr. Ramesh Gupta">Dr. Ramesh Gupta (Surgery)</option>
-                    <option value="Dr. Neha Kapoor">Dr. Neha Kapoor (Emergency)</option>
-                    <option value="Dr. Vijay Reddy">Dr. Vijay Reddy (ICU)</option>
+                    <option value="Dr. Amit Sharma">
+                      Dr. Amit Sharma (Cardiology)
+                    </option>
+                    <option value="Dr. Priya Verma">
+                      Dr. Priya Verma (Neurology)
+                    </option>
+                    <option value="Dr. Rajesh Kumar">
+                      Dr. Rajesh Kumar (Orthopedics)
+                    </option>
+                    <option value="Dr. Sunita Rao">
+                      Dr. Sunita Rao (Pediatrics)
+                    </option>
+                    <option value="Dr. Kavita Singh">
+                      Dr. Kavita Singh (Gynecology)
+                    </option>
+                    <option value="Dr. Anil Mehta">
+                      Dr. Anil Mehta (Psychiatry)
+                    </option>
+                    <option value="Dr. Deepak Joshi">
+                      Dr. Deepak Joshi (General Medicine)
+                    </option>
+                    <option value="Dr. Ramesh Gupta">
+                      Dr. Ramesh Gupta (Surgery)
+                    </option>
+                    <option value="Dr. Neha Kapoor">
+                      Dr. Neha Kapoor (Emergency)
+                    </option>
+                    <option value="Dr. Vijay Reddy">
+                      Dr. Vijay Reddy (ICU)
+                    </option>
                   </select>
-                </div>
                 </div>
                 <div class="mb-3">
                   <label for="status" class="form-label">Status</label>
@@ -231,7 +279,7 @@
                   <button
                     type="button"
                     class="btn btn-primary"
-                    id="searchPatientBtn"
+                    id="searchPatientModalBtn"
                   >
                     <i class="fas fa-search"></i> Search
                   </button>
@@ -303,7 +351,8 @@
           <div class="card mb-4">
             <div class="card-header bg-success text-white">
               <h5 class="mb-0">
-                <i class="fas fa-hourglass-start"></i> Active Visits (Scheduled/In Progress)
+                <i class="fas fa-hourglass-start"></i> Active Visits
+                (Scheduled/In Progress)
               </h5>
             </div>
             <div class="card-body">
@@ -357,19 +406,6 @@
                     <tr>
                       <td colspan="7" class="text-center text-muted">
                         <i class="fas fa-inbox"></i> No completed visits
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-                  <tbody id="visitsTableBody">
-                    <tr>
-                      <td colspan="8" class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                          <span class="visually-hidden">Loading...</span>
-                        </div>
                       </td>
                     </tr>
                   </tbody>

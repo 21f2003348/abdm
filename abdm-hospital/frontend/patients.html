@@ -32,19 +32,34 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto">
             <li class="nav-item">
-              <a class="nav-link" href="index.html">Dashboard</a>
+              <a class="nav-link" href="index.html"
+                ><i class="fas fa-home"></i> Dashboard</a
+              >
             </li>
             <li class="nav-item">
-              <a class="nav-link active" href="patients.html">Patients</a>
+              <a class="nav-link active" href="patients.html"
+                ><i class="fas fa-user-injured"></i> Patients</a
+              >
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="visits.html">Visits</a>
+              <a class="nav-link" href="visits.html"
+                ><i class="fas fa-calendar-check"></i> Visits</a
+              >
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="health-records.html">Health Records</a>
+              <a class="nav-link" href="health-records.html"
+                ><i class="fas fa-file-medical"></i> Health Records</a
+              >
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="abdm-status.html">ABDM Status</a>
+              <a class="nav-link" href="patient-history.html"
+                ><i class="fas fa-history"></i> Patient History</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="abdm-status.html"
+                ><i class="fas fa-heartbeat"></i> ABDM Status</a
+              >
             </li>
           </ul>
         </div>
@@ -87,6 +102,25 @@
                     required
                   />
                   <small class="text-muted">10-digit mobile number</small>
+                </div>
+                <div class="mb-3">
+                  <label for="patientGender" class="form-label">Gender</label>
+                  <select class="form-select" id="patientGender">
+                    <option value="">Select Gender</option>
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="patientDateOfBirth" class="form-label"
+                    >Date of Birth</label
+                  >
+                  <input
+                    type="date"
+                    class="form-control"
+                    id="patientDateOfBirth"
+                  />
                 </div>
                 <div class="mb-3">
                   <label for="patientAbhaId" class="form-label"

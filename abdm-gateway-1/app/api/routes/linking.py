@@ -43,7 +43,19 @@ async def discover(
     headers=Depends(require_gateway_headers),
     db: AsyncSession = Depends(get_db)
 ):
-    return DiscoverPatientResponse(**(await discover_patient(body.mobile, body.name, db)))
+    result = await discover_patient(
+        mobile=body.mobile,
+        name=body.name,
+        gender=body.gender,
+        date_of_birth=body.dateOfBirth,
+        aadhaar=body.aadhaar,
+        db=db
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Patient not found or could not be registered.")
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return DiscoverPatientResponse(**result)
 
 @router.post("/init", response_model=LinkInitResponse)
 async def init(
@@ -52,7 +64,7 @@ async def init(
     headers=Depends(require_gateway_headers),
     db: AsyncSession = Depends(get_db)
 ):
-    return LinkInitResponse(**(await init_link(body.patientId, body.txnId, db)))
+    return LinkInitResponse(**(await init_link(body.patientId, body.txnId, body.hipId, db)))
 
 @router.post("/confirm", response_model=LinkConfirmResponse)
 async def confirm(
@@ -61,7 +73,7 @@ async def confirm(
     headers=Depends(require_gateway_headers),
     db: AsyncSession = Depends(get_db)
 ):
-    return LinkConfirmResponse(**(await confirm_link(body.patientId, body.txnId, body.otp, db)))
+    return LinkConfirmResponse(**(await confirm_link(body.patientId, body.txnId, body.otp, body.hipId, db)))
 
 @router.post("/notify")
 async def notify(

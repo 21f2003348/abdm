@@ -6,11 +6,7 @@ from loguru import logger
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.api.routes import api_router
-from app.database.init_db import (
-    init_db, seed_clients, seed_bridges, seed_bridge_services, seed_patients,
-    seed_linking_requests, seed_linked_care_contexts, seed_consent_requests,
-    seed_data_transfers
-)
+from app.database.init_db import init_db, seed_clients
 from app.services.task_processor import task_processor
 
 settings = get_settings()
@@ -26,14 +22,8 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing database...")
     await init_db()
     await seed_clients()
-    await seed_bridges()
-    await seed_bridge_services()
-    await seed_patients()
-    await seed_linking_requests()
-    await seed_linked_care_contexts()
-    await seed_consent_requests()
-    await seed_data_transfers()
-    logger.info("Database initialized with all dummy data.")
+    logger.info("Database initialized. Client credentials seeded.")
+    logger.info("Gateway will auto-populate data from hospital registrations.")
     
     # Start background task processor for webhook retries
     logger.info("Starting background task processor...")

@@ -12,7 +12,13 @@ class Patient(Base):
     name = Column(String, nullable=False)
     mobile = Column(String, unique=True, nullable=False)
     abha_id = Column(String, unique=True, nullable=True)
+    gateway_patient_id = Column(String, unique=True, nullable=True)  # Links to gateway patient ABHA ID
     aadhaar = Column(String, unique=True, nullable=True)
+    gender = Column(String, nullable=True)  # Male, Female, Other
+    date_of_birth = Column(DateTime, nullable=True)
+    abha_address = Column(String, nullable=True)  # ABHA address format: user@abdm
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     visits = relationship("Visit", back_populates="patient")
     care_contexts = relationship("CareContext", back_populates="patient")

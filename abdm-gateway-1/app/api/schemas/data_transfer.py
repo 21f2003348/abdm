@@ -26,6 +26,8 @@ class RequestHealthInfoRequest(BaseModel):
     hipId: str
     careContextId: str
     dataTypes: List[str]
+    hiuId: Optional[str] = None
+    consentId: Optional[str] = None
 
 class RequestHealthInfoResponse(BaseModel):
     requestId: str

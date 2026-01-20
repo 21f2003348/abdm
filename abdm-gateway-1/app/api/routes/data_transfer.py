@@ -51,7 +51,7 @@ async def create_data_request(
     Gateway validates consent and forwards to HIP.
     """
     result = await request_health_info(
-        patient_id=body.patientId,
+        patient_abha_id=body.patientId,
         hip_id=body.hipId,
         hiu_id=body.hiuId,
         consent_id=body.consentId,
@@ -145,12 +145,25 @@ async def request_health_info_endpoint(
     headers=Depends(require_gateway_headers),
     db: AsyncSession = Depends(get_db)
 ):
-    return RequestHealthInfoResponse(
-        **(await request_health_info(
-            body.patientId, body.hipId,
-            body.careContextId, body.dataTypes, db
-        ))
+    hiu_id = body.hiuId or headers.get("cm_id") or "legacy-hiu"
+    care_context_ids = [body.careContextId]
+    result = await request_health_info(
+        patient_abha_id=body.patientId,
+        hip_id=body.hipId,
+        hiu_id=hiu_id,
+        consent_id=body.consentId,
+        care_context_ids=care_context_ids,
+        data_types=body.dataTypes,
+        db=db,
     )
+
+    if "error" in result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["error"]
+        )
+
+    return RequestHealthInfoResponse(**result)
 
 @router.post("/notify", response_model=DataFlowNotifyResponse)
 async def data_flow_notify_endpoint(

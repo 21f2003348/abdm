@@ -6,8 +6,11 @@ from dotenv import load_dotenv, set_key
 import os
 import requests
 from typing import Dict, Any, List
+from pathlib import Path
 
-load_dotenv()
+# Always load the hospital's .env (even if the process is started from repo root)
+HOSPITAL_ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(dotenv_path=HOSPITAL_ENV_PATH)
 
 def get_gateway_base_url():
     """Get gateway URL from environment, default to localhost:8000"""
@@ -20,10 +23,17 @@ class TokenManager:
     def refresh_token(cls):
         """Force refresh the token by calling the authentication endpoint."""
         client_id, client_secret = cls.get_client_credentials()
+        # Generate fresh required headers for each auth request
+        auth_headers = {
+            "REQUEST-ID": str(uuid.uuid4()),
+            "TIMESTAMP": datetime.now(timezone.utc).isoformat(),
+            "X-CM-ID": os.getenv("X_CM_ID", "hospital-main"),
+            "Content-Type": "application/json",
+        }
         response = requests.post(
             f"{GATEWAY_BASE_URL}/api/auth/session",
             json={"clientId": client_id, "clientSecret": client_secret, "grantType": "client_credentials"},
-            headers=headers1,
+            headers=auth_headers,
         )
         if response.status_code == 200:
             new_token = response.json()["accessToken"]
@@ -41,7 +51,9 @@ class TokenManager:
 
     @classmethod
     def set_token(cls, token):
-        set_key(".env", "ACCESS_TOKEN", token)
+        set_key(str(HOSPITAL_ENV_PATH), "ACCESS_TOKEN", token)
+        # Also update the current process env so subsequent requests use the new token
+        os.environ["ACCESS_TOKEN"] = token
 
     @classmethod
     def get_client_credentials(cls):
@@ -71,7 +83,8 @@ class TokenManager:
 
     @classmethod
     def set_service_id(cls, service_id):
-        set_key(".env", "SERVICE_ID", service_id)
+        set_key(str(HOSPITAL_ENV_PATH), "SERVICE_ID", service_id)
+        os.environ["SERVICE_ID"] = service_id
 
     @classmethod
     def get_service_id(cls):
@@ -89,7 +102,8 @@ class TokenManager:
 
     @classmethod
     def set_link_token(cls, link_token):
-        set_key(".env", "LINK_TOKEN", link_token)
+        set_key(str(HOSPITAL_ENV_PATH), "LINK_TOKEN", link_token)
+        os.environ["LINK_TOKEN"] = link_token
     
     @classmethod
     def get_gateway_url(cls):
@@ -147,11 +161,18 @@ async def gateway_health_check():
 async def create_auth_session():
     """Call the /api/auth/session endpoint to create an authentication session."""
     client_id, client_secret = TokenManager.get_client_credentials()
+    # Generate fresh headers per request (avoid stale timestamps / request ids)
+    fresh_headers = {
+        "REQUEST-ID": str(uuid.uuid4()),
+        "TIMESTAMP": datetime.now(timezone.utc).isoformat(),
+        "X-CM-ID": os.getenv("X_CM_ID", "hospital-main"),
+        "Content-Type": "application/json",
+    }
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{GATEWAY_BASE_URL}/api/auth/session",
             json={"clientId": client_id, "clientSecret": client_secret, "grantType": "client_credentials"},
-            headers=headers1,
+            headers=fresh_headers,
         )
         response_data = response.json()
         TokenManager.set_token(response_data["accessToken"])
@@ -220,26 +241,79 @@ async def generate_link_token(patient_id: str):
 
 async def link_care_contexts_to_gateway(payload: Dict[str, Any]):
     """Link care contexts using gateway schema."""
+    # Ensure we have a valid token before making the request
+    try:
+        token = TokenManager.get_token()
+        if not token:
+            print("No access token found. Authenticating with gateway...")
+            await create_auth_session()
+    except Exception as auth_error:
+        print(f"Failed to get/refresh token: {str(auth_error)}")  
+        # Try to create a new auth session
+        try:
+            await create_auth_session()
+        except Exception as e:
+            print(f"Failed to create auth session: {str(e)}")
+            raise HTTPException(status_code=401, detail=f"Failed to authenticate with gateway: {str(e)}")
+    
+    # Extract hipId from payload (required for database)
+    hip_id = payload.get("hipId")
+    if not hip_id:
+        # Try to get from bridge details as fallback
+        try:
+            hip_id = TokenManager.get_bridge_details()[0]
+        except Exception:
+            hip_id = "HOSPITAL-1"  # Default fallback
+    
     body = {
         "patientId": payload.get("patientId"),
         "careContexts": [
             {
                 "id": payload.get("careContextId") or cc.get("id"),
                 "referenceNumber": payload.get("referenceNumber") or cc.get("referenceNumber"),
+                "hipId": cc.get("hipId") or payload.get("hipId") or hip_id,
             }
             for cc in payload.get("careContexts", [{}])
             if cc.get("id") or payload.get("careContextId")
         ],
     }
+    
+    # If no careContexts array was provided, create one from payload fields
+    if not body["careContexts"] and payload.get("careContextId"):
+        body["careContexts"] = [
+            {
+                "id": payload.get("careContextId"),
+                "referenceNumber": payload.get("referenceNumber") or payload.get("careContextId"),
+                "hipId": hip_id,
+            }
+        ]
 
     async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{GATEWAY_BASE_URL}/api/link/carecontext",
-            headers=get_headers_with_auth(),
-            json=body,
-        )
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = await client.post(
+                f"{GATEWAY_BASE_URL}/api/link/carecontext",
+                headers=get_headers_with_auth(),
+                json=body,
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 401:
+                print("Received 401 Unauthorized. Refreshing token and retrying...")
+                # Refresh token and retry
+                try:
+                    TokenManager.refresh_token()
+                    response = await client.post(
+                        f"{GATEWAY_BASE_URL}/api/link/carecontext",
+                        headers=get_headers_with_auth(),
+                        json=body,
+                    )
+                    response.raise_for_status()
+                    return response.json()
+                except Exception as retry_error:
+                    raise HTTPException(status_code=401, detail=f"Failed after token refresh: {str(retry_error)}")
+            else:
+                raise
 
 async def discover_patient(payload: Dict[str, Any]):
     async with httpx.AsyncClient() as client:
@@ -278,6 +352,99 @@ async def notify_linking(payload: Dict[str, Any]):
         )
         response.raise_for_status()
         return response.json()
+
+# Consent Management
+async def init_consent_request(patient_id: str, hip_id: str = None, purpose: Dict[str, Any] = None):
+    """
+    Initialize a consent request in the gateway.
+    
+    Args:
+        patient_id: Patient ABHA ID
+        hip_id: Hospital/Bridge ID (optional, will use HIU bridge ID if not provided)
+        purpose: Optional purpose dict with code and text (defaults to CAREMGT)
+    
+    Returns:
+        Dict with consentRequestId and status
+    """
+    if purpose is None:
+        purpose = {
+            "code": "CAREMGT",
+            "text": "Care Management - Access to health records"
+        }
+    
+    # If hip_id is not provided, get HIU bridge ID
+    if not hip_id:
+        try:
+            hip_id = TokenManager.get_bridge_id_for_role("HIU")
+        except Exception:
+            # Fallback to regular bridge ID
+            hip_id = TokenManager.get_bridge_details()[0]
+    
+    # Ensure we have a valid token before making the request
+    try:
+        token = TokenManager.get_token()
+        if not token:
+            print("No access token found. Authenticating with gateway...")
+            await create_auth_session()
+    except Exception as e:
+        print(f"⚠️  Token check warning: {str(e)}")
+        # Try to authenticate anyway
+        try:
+            await create_auth_session()
+        except Exception as auth_error:
+            print(f"❌ Failed to authenticate: {str(auth_error)}")
+            raise HTTPException(status_code=401, detail=f"Authentication failed: {str(auth_error)}")
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            response = await client.post(
+                f"{GATEWAY_BASE_URL}/api/consent/init",
+                headers=get_headers_with_auth(),
+                json={
+                    "patientId": patient_id,
+                    "hipId": hip_id,
+                    "purpose": purpose
+                }
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 401:
+                print("Received 401 Unauthorized. Refreshing token and retrying...")
+                try:
+                    # Use async auth session instead of sync refresh
+                    await create_auth_session()
+                    print("✅ Token refreshed, retrying consent request...")
+                    
+                    response = await client.post(
+                        f"{GATEWAY_BASE_URL}/api/consent/init",
+                        headers=get_headers_with_auth(),
+                        json={
+                            "patientId": patient_id,
+                            "hipId": hip_id,
+                            "purpose": purpose
+                        }
+                    )
+                    response.raise_for_status()
+                    return response.json()
+                except Exception as retry_error:
+                    error_msg = str(retry_error)
+                    print(f"❌ Failed after token refresh: {error_msg}")
+                    raise HTTPException(status_code=401, detail=f"Failed after token refresh: {error_msg}")
+            else:
+                error_detail = f"HTTP {e.response.status_code}"
+                try:
+                    error_detail += f": {e.response.text[:200]}"
+                except:
+                    pass
+                print(f"❌ Gateway error: {error_detail}")
+                raise HTTPException(status_code=e.response.status_code, detail=error_detail)
+        except httpx.RequestError as e:
+            print(f"❌ Network error in init_consent_request: {str(e)}")
+            raise HTTPException(status_code=503, detail=f"Gateway connection error: {str(e)}")
+        except Exception as e:
+            print(f"❌ Unexpected error in init_consent_request: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 async def communicate_with_hospital(payload: Dict[str, Any], hospital_id: str):
     """

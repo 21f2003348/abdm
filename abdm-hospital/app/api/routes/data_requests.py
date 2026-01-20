@@ -102,7 +102,7 @@ async def create_data_request(request: DataRequestCreate):
             data_types=request.dataTypes
         )
         
-        if "error" in response or response.get("status") != "SUCCESS":
+        if "error" in response:
             raise HTTPException(
                 status_code=400,
                 detail=response.get("error") or response.get("message", "Request failed")

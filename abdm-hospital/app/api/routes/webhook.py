@@ -45,6 +45,8 @@ class DataDeliveryWebhook(BaseModel):
     encryptedData: str
     dataCount: int
     expiresAt: str
+    patientId: str
+    fromEntity: Optional[str] = None
 
 
 @router.post("/receive")
@@ -201,6 +203,8 @@ async def receive_data_delivery(
             decrypt_and_store_webhook_data,
             webhook.requestId,
             webhook.encryptedData,
+            webhook.patientId,
+            webhook.fromEntity,
             db
         )
         
@@ -233,15 +237,78 @@ async def process_data_request(payload: Dict[str, Any]):
 
 
 async def process_consent_notification(payload: Dict[str, Any]):
-    """Process consent status notification."""
-    consent_id = payload.get('consentId', 'unknown')
+    """
+    Process consent status notification.
+    If status is GRANTED, automatically trigger data request.
+    """
+    consent_id = payload.get('consentId') or payload.get('consentRequestId')
     status = payload.get('status', 'UNKNOWN')
     print(f"📥 Processing consent notification: {consent_id}")
     print(f"   Status: {status}")
-    # Real implementation would:
+    
+    if status == 'GRANTED':
+        try:
+            from app.services.gateway_service import request_patient_data, TokenManager
+            
+            print("   ✅ Consent GRANTED - Initiating auto-fetch of health data...")
+            
+            # The payload usually contains consentArtefacts with details
+            # If not, we might need to fetch them (but typically notification has them or we query consent details)
+            # For this implementation, we assume the gateway sends relevant details or we use defaults
+            
+            # In a real scenario, we might need to call GET /api/consent/requests/{id} to get details
+            # For the demo, we'll try to extract from payload or fallback to defaults
+            
+            consent_artefacts = payload.get('consentArtefacts', [])
+            if not consent_artefacts:
+                print("   ⚠️  No consent artefacts in payload, using fallback values.")
+                # Fallback: Assume we want data from all linked contexts for this patient
+                # We need patientId and hipId
+                # This part depends heavily on the specific Gateway mock implementation
+                pass
+            
+            for artefact in consent_artefacts:
+                 # Extract details
+                hip_id = artefact.get('hipId')
+                care_context_infos = artefact.get('careContexts', [])
+                care_context_ids = [cc.get('careContextReference') for cc in care_context_infos]
+                
+                # If artefact doesn't have details, we might need to rely on what we sent
+                if not hip_id: 
+                    # Try to find from our local database of requests if we tracked them
+                    # For now, default to the known other hospital
+                    hip_id = "HOSPITAL-2" 
+                
+                patient_id = artefact.get('patientId')
+                if not patient_id:
+                     # Check outer payload
+                     patient_id = payload.get('patientId')
+
+                # We need our own ID (HIU)
+                hiu_id = TokenManager.get_bridge_id_for_role("HIU")
+                
+                if patient_id and hip_id:
+                     print(f"   🚀 Auto-requesting data for patient {patient_id} from {hip_id}...")
+                     response = await request_patient_data(
+                        patient_id=patient_id,
+                        hip_id=hip_id,
+                        hiu_id=hiu_id,
+                        consent_id=artefact.get('id') or consent_id, # Artefact ID is usually the consentId for data request
+                        care_context_ids=care_context_ids,
+                        data_types=["PRESCRIPTION", "DIAGNOSTIC_REPORT", "OPD", "LAB", "IMMUNIZATION"] # Request all types
+                    )
+                     print(f"   ✓ Data request sent: {response}")
+                else:
+                    print("   ⚠️  Could not extract required info for auto-request.")
+
+        except Exception as e:
+            print(f"   ❌ Error during auto-data-request: {e}")
+            import traceback
+            traceback.print_exc()
+
+    # Real implementation would also:
     # 1. Update local consent_requests table
     # 2. Notify relevant departments/users
-    # 3. Trigger data preparation if approved
 
 
 async def process_link_notification(payload: Dict[str, Any]):
@@ -303,6 +370,8 @@ async def fetch_and_send_health_data_to_gateway(
 async def decrypt_and_store_webhook_data(
     request_id: str,
     encrypted_data: str,
+    patient_id: str,
+    source_hospital: Optional[str],
     db: Session
 ):
     """
@@ -316,16 +385,12 @@ async def decrypt_and_store_webhook_data(
     try:
         print(f"\n🔐 HIU: Decrypting health data for request {request_id}...")
         
-        # Extract patient_id from request (in real system, would look up in request tracking)
-        # For now, use a default patient ID
-        patient_id = "patient-001"
-        
         # Decrypt and store
         success = await decrypt_and_store_health_data(
             db=db,
             patient_id=patient_id,
             encrypted_data=encrypted_data,
-            source_hospital="hip-001",
+            source_hospital=source_hospital or "unknown-hip",
             request_id=request_id
         )
         

@@ -19,7 +19,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
       <div class="container-fluid">
         <a class="navbar-brand" href="index.html">
-          <i class="fas fa-hospital-alt"></i> ABDM Hospital
+          <i class="fas fa-hospital"></i> ABDM Hospital
         </a>
         <button
           class="navbar-toggler"
@@ -49,6 +49,11 @@
             <li class="nav-item">
               <a class="nav-link active" href="health-records.html"
                 ><i class="fas fa-file-medical"></i> Health Records</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="patient-history.html"
+                ><i class="fas fa-history"></i> Patient History</a
               >
             </li>
             <li class="nav-item">
@@ -85,44 +90,48 @@
             <div class="card-body">
               <form id="createHealthRecordForm">
                 <div class="mb-3">
-                  <label for="patientId" class="form-label"
-                    >Patient ID <span class="text-danger">*</span></label
+                  <label for="visitDropdown" class="form-label"
+                    >Select Active Visit
+                    <span class="text-danger">*</span></label
                   >
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="patientId"
-                    name="patientId"
-                    required
-                  />
+                  <select class="form-select" id="visitDropdown" required>
+                    <option value="">-- Select Visit --</option>
+                  </select>
+                  <div
+                    id="visitDropdownStatus"
+                    class="text-muted small mt-1"
+                  ></div>
                   <small class="form-text text-muted"
-                    >Or
-                    <a href="#" id="searchPatientLink"
-                      >search by mobile</a
-                    ></small
+                    >Select a scheduled or in-progress visit to auto-fill
+                    patient and visit details</small
                   >
                 </div>
-                <div class="mb-3">
-                  <label for="visitId" class="form-label"
-                    >Visit ID (Optional)</label
-                  >
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="visitId"
-                    name="visitId"
-                  />
-                </div>
-                <div class="mb-3">
-                  <label for="contextId" class="form-label"
-                    >Care Context ID (Optional)</label
-                  >
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="contextId"
-                    name="contextId"
-                  />
+
+                <!-- Hidden fields for auto-filled data -->
+                <input type="hidden" id="patientId" name="patientId" />
+                <input type="hidden" id="visitId" name="visitId" />
+
+                <!-- Auto-filled fields (readonly) -->
+                <div class="mb-3" id="visitDetailsDiv" style="display: none">
+                  <div class="alert alert-info">
+                    <h6>Visit Details:</h6>
+                    <p class="mb-1">
+                      <strong>Patient:</strong>
+                      <span id="selectedPatientName">-</span>
+                    </p>
+                    <p class="mb-1">
+                      <strong>Visit Type:</strong>
+                      <span id="selectedVisitType">-</span>
+                    </p>
+                    <p class="mb-1">
+                      <strong>Department:</strong>
+                      <span id="selectedDepartment">-</span>
+                    </p>
+                    <p class="mb-0">
+                      <strong>Doctor:</strong>
+                      <span id="selectedDoctor">-</span>
+                    </p>
+                  </div>
                 </div>
                 <div class="mb-3">
                   <label for="recordType" class="form-label"
@@ -184,23 +193,55 @@
                 </div>
                 <div class="mb-3">
                   <label for="doctorName" class="form-label">Doctor Name</label>
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="doctorName"
-                    name="doctorName"
-                    placeholder="Dr. Name"
-                  />
+                  <select class="form-select" id="doctorName" name="doctorName">
+                    <option value="">Select Doctor</option>
+                    <option value="Dr. Amit Sharma">
+                      Dr. Amit Sharma (Cardiology)
+                    </option>
+                    <option value="Dr. Priya Verma">
+                      Dr. Priya Verma (Neurology)
+                    </option>
+                    <option value="Dr. Rajesh Kumar">
+                      Dr. Rajesh Kumar (Orthopedics)
+                    </option>
+                    <option value="Dr. Sunita Rao">
+                      Dr. Sunita Rao (Pediatrics)
+                    </option>
+                    <option value="Dr. Kavita Singh">
+                      Dr. Kavita Singh (Gynecology)
+                    </option>
+                    <option value="Dr. Anil Mehta">
+                      Dr. Anil Mehta (Psychiatry)
+                    </option>
+                    <option value="Dr. Deepak Joshi">
+                      Dr. Deepak Joshi (General Medicine)
+                    </option>
+                    <option value="Dr. Ramesh Gupta">
+                      Dr. Ramesh Gupta (Surgery)
+                    </option>
+                    <option value="Dr. Neha Kapoor">
+                      Dr. Neha Kapoor (Emergency)
+                    </option>
+                    <option value="Dr. Vijay Reddy">
+                      Dr. Vijay Reddy (ICU)
+                    </option>
+                  </select>
                 </div>
                 <div class="mb-3">
                   <label for="department" class="form-label">Department</label>
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="department"
-                    name="department"
-                    placeholder="e.g., Cardiology"
-                  />
+                  <select class="form-select" id="department" name="department">
+                    <option value="">Select Department</option>
+                    <option value="Cardiology">Cardiology</option>
+                    <option value="Neurology">Neurology</option>
+                    <option value="Orthopedics">Orthopedics</option>
+                    <option value="Pediatrics">Pediatrics</option>
+                    <option value="Gynecology">Gynecology</option>
+                    <option value="Psychiatry">Psychiatry</option>
+                    <option value="General Medicine">General Medicine</option>
+                    <option value="Surgery">Surgery</option>
+                    <option value="Emergency">Emergency</option>
+                    <option value="ICU">ICU</option>
+                  </select>
                 </div>
                 <div class="mb-3">
                   <label for="fileUrl" class="form-label"
@@ -423,12 +464,24 @@
               <div class="row mb-3" id="fileUrlSection" style="display: none">
                 <div class="col-12">
                   <strong>File:</strong>
-                  <div class="mt-2">
-                    <a
-                      id="detailFileUrl"
-                      href="#"
-                      target="_blank"
-                      class="btn btn-sm btn-outline-primary"
+                  <div class="mb-3">
+                    <label for="visitSelect" class="form-label">Visit <span class="text-danger">*</span></label>
+                    <select class="form-select" id="visitSelect" name="visitSelect" required>
+                      <option value="">Select an active visit</option>
+                    </select>
+                    <small class="form-text text-muted">Selecting a visit auto-fills patient, doctor, department, and links the record to that visit.</small>
+                  </div>
+                  <input type="hidden" id="patientId" name="patientId" />
+                  <input type="hidden" id="visitId" name="visitId" />
+                  <div class="mb-3" id="visitInfo" style="display: none">
+                    <div class="alert alert-info mb-0">
+                      <div class="d-flex justify-content-between">
+                        <div>
+                          <span id="visitPatientText"></span> | <span id="visitDetailsText"></span> | <span id="visitMetaText"></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                     >
                       <i class="fas fa-external-link-alt"></i> View File
                     </a>

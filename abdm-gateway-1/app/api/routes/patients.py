@@ -12,7 +12,7 @@ from sqlalchemy.future import select
 
 from app.database.connection import get_db
 from app.database.models import Patient
-from app.deps.auth import verify_token
+from app.deps.auth import get_current_token
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
 
@@ -41,7 +41,7 @@ class PatientResponse(BaseModel):
 async def register_patient(
     request: PatientRegisterRequest,
     db: AsyncSession = Depends(get_db),
-    token_data: dict = Depends(verify_token)
+    token_data: dict = Depends(get_current_token)
 ):
     """
     Register a new patient in the gateway's central registry.
@@ -49,12 +49,28 @@ async def register_patient(
     
     This is called by hospitals when they link a patient's care context.
     """
-    # Check if patient already exists
+    # Check if patient already exists by ABHA ID
     result = await db.execute(
         select(Patient).where(Patient.abha_id == request.abhaId)
     )
     existing_patient = result.scalar_one_or_none()
-    
+
+    if not existing_patient:
+        # If not found by ABHA ID, check by name, mobile, gender, and date of birth
+        query = select(Patient).where(
+            Patient.name == request.name,
+            Patient.mobile == request.mobile,
+            Patient.gender == request.gender
+        )
+        if request.dateOfBirth:
+            try:
+                dob = datetime.fromisoformat(request.dateOfBirth)
+                query = query.where(Patient.date_of_birth == dob)
+            except Exception:
+                pass
+        result2 = await db.execute(query)
+        existing_patient = result2.scalar_one_or_none()
+
     if existing_patient:
         # Update existing patient info if provided
         if request.name:
@@ -66,12 +82,13 @@ async def register_patient(
         if request.abhaAddress:
             existing_patient.abha_address = request.abhaAddress
         if request.dateOfBirth:
-            existing_patient.date_of_birth = datetime.fromisoformat(request.dateOfBirth)
-        
+            try:
+                existing_patient.date_of_birth = datetime.fromisoformat(request.dateOfBirth)
+            except Exception:
+                pass
         existing_patient.updated_at = datetime.utcnow()
         await db.commit()
         await db.refresh(existing_patient)
-        
         return PatientResponse(
             abhaId=existing_patient.abha_id,
             abhaAddress=existing_patient.abha_address,
@@ -82,7 +99,7 @@ async def register_patient(
             createdAt=existing_patient.created_at.isoformat(),
             updatedAt=existing_patient.updated_at.isoformat()
         )
-    
+
     # Create new patient
     new_patient = Patient(
         abha_id=request.abhaId,
@@ -94,11 +111,9 @@ async def register_patient(
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
     )
-    
     db.add(new_patient)
     await db.commit()
     await db.refresh(new_patient)
-    
     return PatientResponse(
         abhaId=new_patient.abha_id,
         abhaAddress=new_patient.abha_address,
@@ -115,7 +130,7 @@ async def register_patient(
 async def get_patient(
     abha_id: str,
     db: AsyncSession = Depends(get_db),
-    token_data: dict = Depends(verify_token)
+    token_data: dict = Depends(get_current_token)
 ):
     """
     Get patient information by ABHA ID.

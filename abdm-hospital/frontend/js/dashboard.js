@@ -12,7 +12,6 @@ async function loadDashboardData() {
     await Promise.all([
       loadPatientCount(),
       loadVisitCount(),
-      loadCareContextCount(),
       checkABDMStatus(),
       loadRecentPatients(),
       loadWebhookNotifications(),
@@ -45,15 +44,6 @@ async function loadVisitCount() {
       (Array.isArray(visits) ? visits.length : visits?.length) || 0;
   } catch (error) {
     document.getElementById("activeVisits").textContent = "0";
-  }
-}
-
-async function loadCareContextCount() {
-  try {
-    // This would need a specific endpoint - for now use placeholder
-    document.getElementById("careContexts").textContent = "-";
-  } catch (error) {
-    document.getElementById("careContexts").textContent = "0";
   }
 }
 

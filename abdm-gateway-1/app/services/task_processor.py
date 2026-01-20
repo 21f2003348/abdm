@@ -100,7 +100,10 @@ class TaskProcessor:
                 "status": "SUCCESS",
                 "encryptedData": transfer.encrypted_data,
                 "dataCount": transfer.data_count,
-                "expiresAt": transfer.expires_at.isoformat() if transfer.expires_at else datetime.utcnow().isoformat()
+                "expiresAt": transfer.expires_at.isoformat() if transfer.expires_at else datetime.utcnow().isoformat(),
+                "patientId": transfer.patient_abha_id,
+                "fromEntity": transfer.from_entity,
+                "consentId": transfer.consent_request_id,
             }
             
             logger.info(f"Sending webhook to HIU {transfer.to_entity}: {hiu_bridge.webhook_url}")
@@ -158,6 +161,7 @@ class TaskProcessor:
         db: AsyncSession,
         transfer_id: str,
         hip_id: str,
+        hiu_id: str,
         patient_id: str,
         consent_id: str,
         care_context_ids: list[str],
@@ -197,7 +201,7 @@ class TaskProcessor:
                 "careContextIds": care_context_ids,
                 "dataTypes": data_types,
                 "hipId": hip_id,
-                "hiuId": "hiu-001"
+                "hiuId": hiu_id,
             }
             
             logger.info(f"Sending webhook to HIP {hip_id}: {webhook_payload}")
