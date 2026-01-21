@@ -4,8 +4,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.services.gateway_service import gateway_health_check, create_auth_session, register_bridge, update_bridge_webhook
 from app.api.models import AuthSessionRequest, RegisterBridgeRequest, UpdateBridgeWebhookRequest
-from app.api.routes import patient, visit, care_context, webhook, demo, health_records, data_requests
+from app.api.routes import patient, visit, care_context, webhook, demo, health_records, data_requests, consent
 import os
+
 
 app = FastAPI(
     title="ABDM Hospital System",
@@ -13,10 +14,49 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Enable CORS for all origins (for development)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "*"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database on startup if needed."""
+    from app.database.connection import SessionLocal
+    from app.database.models import Patient
+    
+    # Try to connect to database and check if tables exist
+    db = SessionLocal()
+    try:
+        # Try to query - if tables don't exist, this will fail
+        patient_count = db.query(Patient).count()
+        # Database exists with tables, check if it has data
+        if patient_count == 0:
+            print("\n🚀 Database exists but is empty. Initializing data...")
+            from init_db import init_db
+            init_db()
+            print("✅ Database initialized successfully\n")
+    except Exception as e:
+        # Tables don't exist or database error - initialize
+        print(f"\n🚀 Database tables not found. Initializing...")
+        from init_db import init_db
+        init_db()
+        print("✅ Database initialized successfully\n")
+    finally:
+            db.close()
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8081", "http://127.0.0.1:8081"],
+    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,6 +104,7 @@ app.include_router(webhook.router)
 app.include_router(demo.router)
 app.include_router(health_records.router)
 app.include_router(data_requests.router)
+app.include_router(consent.router)
 
 # Serve frontend
 @app.get("/")

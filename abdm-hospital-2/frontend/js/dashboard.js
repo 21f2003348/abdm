@@ -12,11 +12,23 @@ async function loadDashboardData() {
     await Promise.all([
       loadPatientCount(),
       loadVisitCount(),
-      loadCareContextCount(),
       checkABDMStatus(),
       loadRecentPatients(),
       loadWebhookNotifications(),
+      loadPatientHistoryCount(),
     ]);
+    async function loadPatientHistoryCount() {
+      try {
+        // Example: count all health records as patient history
+        const records = await api.healthRecords.list();
+        const count = Array.isArray(records)
+          ? records.length
+          : records?.length || 0;
+        document.getElementById("patientHistoryCount").textContent = count;
+      } catch (error) {
+        document.getElementById("patientHistoryCount").textContent = "0";
+      }
+    }
   } catch (error) {
     console.error("Error loading dashboard data:", error);
   }
@@ -45,15 +57,6 @@ async function loadVisitCount() {
       (Array.isArray(visits) ? visits.length : visits?.length) || 0;
   } catch (error) {
     document.getElementById("activeVisits").textContent = "0";
-  }
-}
-
-async function loadCareContextCount() {
-  try {
-    // This would need a specific endpoint - for now use placeholder
-    document.getElementById("careContexts").textContent = "-";
-  } catch (error) {
-    document.getElementById("careContexts").textContent = "0";
   }
 }
 

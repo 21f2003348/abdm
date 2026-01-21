@@ -127,6 +127,9 @@ const api = {
     async getActive() {
       return api.get("/api/visit/active");
     },
+    async updateStatus(visitId, status) {
+      return api.patch(`/api/visit/${visitId}/status`, { status });
+    },
   },
 
   // Care Context APIs

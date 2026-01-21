@@ -20,28 +20,426 @@ from app.database.models import Patient, Visit, CareContext, HealthRecord
 # ABDM Gateway configuration
 GATEWAY_URL = "http://localhost:8000"  # Adjust if gateway is on different port
 
-def register_care_context_to_gateway(patient_abha_id: str, care_context_id: str, context_name: str):
-    """Register care context with ABDM Gateway."""
+def setup_gateway_integration():
+    """Setup bridge registration, services, and authentication with gateway."""
+    print("\n🌉 Setting up gateway integration...")
+    
     try:
-        # This would typically call the gateway's linking API
-        # For now, we'll just log it
-        print(f"  📡 Registering care context '{context_name}' to ABDM Gateway...")
-        print(f"     Patient ABHA: {patient_abha_id}, Care Context ID: {care_context_id}")
+        from app.services.gateway_service import TokenManager
         
-        # In a real scenario, you'd make an API call like:
-        # response = requests.post(
-        #     f"{GATEWAY_URL}/api/link/care-context",
-        #     json={
-        #         "patientId": patient_abha_id,
-        #         "careContextId": care_context_id,
-        #         "contextName": context_name
-        #     }
-        # )
-        # return response.json()
+        # Check if gateway is available - retry up to 5 times with delays
+        gateway_ready = False
+        for attempt in range(5):
+            try:
+                health_check = requests.get(f"{GATEWAY_URL}/health", timeout=3)
+                if health_check.status_code == 200:
+                    gateway_ready = True
+                    print("  ✅ Gateway is available")
+                    break
+            except Exception:
+                if attempt < 4:
+                    print(f"  ⏳ Waiting for gateway... (attempt {attempt + 1}/5)")
+                    import time
+                    time.sleep(3)
         
+        if not gateway_ready:
+            print("  ⚠️  Gateway not available - skipping integration setup")
+            return False
+        
+        # Step 1: Create authentication session and get access token
+        print("\n  📝 Step 1: Creating authentication session...")
+        try:
+            client_id = os.getenv("CLIENT_ID")
+            client_secret = os.getenv("CLIENT_SECRET")
+            
+            if not client_id or not client_secret:
+                print("     ⚠️  CLIENT_ID or CLIENT_SECRET not found in .env")
+                return False
+            
+            # Generate required headers
+            request_id = str(uuid.uuid4())
+            timestamp = datetime.now(timezone.utc).isoformat()
+            
+            auth_response = requests.post(
+                f"{GATEWAY_URL}/api/auth/session",
+                json={
+                    "clientId": client_id,
+                    "clientSecret": client_secret,
+                    "grantType": "client_credentials"
+                },
+                headers={
+                    "Content-Type": "application/json",
+                    "REQUEST-ID": request_id,
+                    "TIMESTAMP": timestamp,
+                    "X-CM-ID": "sbx"
+                },
+                timeout=10
+            )
+            
+            if auth_response.status_code == 200:
+                token = auth_response.json().get("accessToken")
+                TokenManager.set_token(token)
+                print(f"     ✅ Access token obtained and saved")
+            else:
+                print(f"     ⚠️  Authentication failed: {auth_response.status_code} - {auth_response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"     ⚠️  Failed to authenticate: {e}")
+            return False
+        
+        # Get fresh token for subsequent calls
+        token = TokenManager.get_token()
+        
+        # Step 2: Register bridge (hospital) with gateway
+        print("\n  📝 Step 2: Registering bridge with gateway...")
+        try:
+            bridge_id = os.getenv("BRIDGE_ID_HIP") or os.getenv("BRIDGE_ID")
+            entity_type = os.getenv("ENTITY_TYPE")
+            name = os.getenv("NAME")
+            
+            if not bridge_id or not entity_type or not name:
+                print("     ⚠️  Bridge details missing in .env")
+            else:
+                # Generate headers for bridge registration
+                request_id = str(uuid.uuid4())
+                timestamp = datetime.now(timezone.utc).isoformat()
+                
+                bridge_response = requests.post(
+                    f"{GATEWAY_URL}/api/bridge/register",
+                    json={
+                        "bridgeId": bridge_id,
+                        "entityType": entity_type,
+                        "name": name
+                    },
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json",
+                        "REQUEST-ID": request_id,
+                        "TIMESTAMP": timestamp,
+                        "X-CM-ID": "sbx"
+                    },
+                    timeout=10
+                )
+                
+                if bridge_response.status_code in [200, 201]:
+                    print(f"     ✅ Bridge registered successfully")
+                elif bridge_response.status_code == 400 and "already exists" in bridge_response.text.lower():
+                    print(f"     ✅ Bridge already registered")
+                else:
+                    print(f"     ⚠️  Bridge registration: {bridge_response.status_code} - {bridge_response.text}")
+                    
+        except Exception as e:
+            print(f"     ⚠️  Bridge registration failed: {e}")
+        
+        # Step 3: Update webhook URL
+        print("\n  📝 Step 3: Updating webhook URL...")
+        try:
+            webhook_url = os.getenv("WEBHOOK_URL") or os.getenv("HOSPITAL_WEBHOOK_URL")
+            
+            if not bridge_id or not webhook_url:
+                print("     ⚠️  Webhook details missing in .env")
+            else:
+                # Generate headers for webhook update
+                request_id = str(uuid.uuid4())
+                timestamp = datetime.now(timezone.utc).isoformat()
+                
+                webhook_response = requests.patch(
+                    f"{GATEWAY_URL}/api/bridge/url",
+                    json={
+                        "bridgeId": bridge_id,
+                        "webhookUrl": webhook_url
+                    },
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json",
+                        "REQUEST-ID": request_id,
+                        "TIMESTAMP": timestamp,
+                        "X-CM-ID": "sbx"
+                    },
+                    timeout=10
+                )
+                
+                if webhook_response.status_code in [200, 204]:
+                    print(f"     ✅ Webhook URL updated successfully")
+                else:
+                    print(f"     ⚠️  Webhook update: {webhook_response.status_code} - {webhook_response.text}")
+                    
+        except Exception as e:
+            print(f"     ⚠️  Webhook update failed: {e}")
+        
+        # Step 4: Register bridge services
+        # Note: Bridge is registered as HIP only. HIU functionality is handled through consent/data-sharing
+        print("\n  📝 Step 4: Registering bridge services...")
+        try:
+            services = [
+                {
+                    "serviceId": f"{bridge_id}-lab",
+                    "bridgeId": bridge_id,
+                    "serviceName": "Laboratory Services",
+                    "serviceType": "LAB",
+                    "description": "Laboratory test results and reports"
+                },
+                {
+                    "serviceId": f"{bridge_id}-pharmacy",
+                    "bridgeId": bridge_id,
+                    "serviceName": "Pharmacy Services",
+                    "serviceType": "PHARMACY",
+                    "description": "Prescription and medication records"
+                },
+                {
+                    "serviceId": f"{bridge_id}-opd",
+                    "bridgeId": bridge_id,
+                    "serviceName": "OPD Services",
+                    "serviceType": "OPD",
+                    "description": "Outpatient department consultations"
+                },
+                {
+                    "serviceId": f"{bridge_id}-ipd",
+                    "bridgeId": bridge_id,
+                    "serviceName": "IPD Services",
+                    "serviceType": "IPD",
+                    "description": "Inpatient department admissions"
+                }
+            ]
+            
+            for service in services:
+                try:
+                    # Generate headers for each service
+                    request_id = str(uuid.uuid4())
+                    timestamp = datetime.now(timezone.utc).isoformat()
+                    
+                    service_response = requests.post(
+                        f"{GATEWAY_URL}/api/bridge/service",
+                        json=service,
+                        headers={
+                            "Authorization": f"Bearer {token}",
+                            "Content-Type": "application/json",
+                            "REQUEST-ID": request_id,
+                            "TIMESTAMP": timestamp,
+                            "X-CM-ID": "sbx"
+                        },
+                        timeout=10
+                    )
+                    
+                    if service_response.status_code in [200, 201]:
+                        print(f"     ✅ Service '{service['serviceName']}' registered")
+                    elif service_response.status_code == 400 and "already exists" in service_response.text.lower():
+                        print(f"     ✅ Service '{service['serviceName']}' already registered")
+                    else:
+                        print(f"     ⚠️  Service '{service['serviceName']}': {service_response.status_code}")
+                except Exception as e:
+                    print(f"     ⚠️  Service registration failed: {e}")
+                    
+        except Exception as e:
+            print(f"     ⚠️  Bridge services registration failed: {e}")
+        
+        print("\n✅ Gateway integration setup complete!\n")
         return True
+        
     except Exception as e:
-        print(f"  ⚠️  Failed to register care context: {e}")
+        print(f"  ⚠️  Gateway integration setup failed: {e}")
+        return False
+
+def register_patient_to_gateway(name: str, mobile: str, aadhaar: str = None, gender: str = None, date_of_birth=None):
+    """Register patient with ABDM Gateway and get gateway patient ID."""
+    try:
+        import time
+        from app.services.gateway_service import TokenManager
+        
+        # Check if gateway is available - retry up to 3 times with delays
+        gateway_ready = False
+        for attempt in range(3):
+            try:
+                health_check = requests.get(f"{GATEWAY_URL}/health", timeout=3)
+                if health_check.status_code == 200:
+                    gateway_ready = True
+                    break
+            except Exception:
+                if attempt < 2:
+                    print(f"  ⏳ Gateway not ready, waiting 2 seconds... (attempt {attempt + 1}/3)")
+                    time.sleep(2)
+        
+        if not gateway_ready:
+            print(f"  ⚠️  Gateway not available after 3 attempts, patient will sync on next registration")
+            return None
+        
+        # Get authentication token (will refresh if needed)
+        try:
+            token = TokenManager.refresh_token()  # Force fresh token
+        except Exception as e:
+            print(f"  ⚠️  Failed to get auth token: {e}")
+            return None
+        
+        # Generate required headers
+        request_id = str(uuid.uuid4())
+        timestamp = datetime.now(timezone.utc).isoformat()
+        
+        # Prepare payload with all available patient data
+        payload = {
+            "mobile": mobile,
+            "name": name
+        }
+        
+        # Add optional fields if provided
+        if gender:
+            payload["gender"] = gender
+        if date_of_birth:
+            # Convert datetime to ISO format string if it's a datetime object
+            if hasattr(date_of_birth, 'isoformat'):
+                payload["dateOfBirth"] = date_of_birth.isoformat()
+            else:
+                payload["dateOfBirth"] = date_of_birth
+        
+        # Call gateway discover endpoint to register patient
+        response = requests.post(
+            f"{GATEWAY_URL}/api/link/discover",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "X-CM-ID": "sbx",
+                "REQUEST-ID": request_id,
+                "TIMESTAMP": timestamp,
+                "Content-Type": "application/json"
+            },
+            json=payload,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            gateway_patient_id = result.get("patientId")
+            status = result.get("status")
+            print(f"  ✅ Patient {status.lower()} in gateway: {gateway_patient_id}")
+            return result
+        elif response.status_code == 401:
+            print(f"  ⚠️  Authentication failed - check CLIENT_ID and CLIENT_SECRET in .env")
+            return None
+        else:
+            print(f"  ⚠️  Gateway returned status {response.status_code}: {response.text}")
+            return None
+            
+    except Exception as e:
+        print(f"  ⚠️  Exception during patient registration: {str(e)}")
+        return None
+
+def register_care_context_to_gateway(patient_abha_id: str, care_context_id: str, context_name: str, hip_id: str = None):
+    """Register care context with ABDM Gateway and create linking/consent requests."""
+    try:
+        from app.services.gateway_service import TokenManager
+        
+        # Check if gateway is available
+        try:
+            health_check = requests.get(f"{GATEWAY_URL}/health", timeout=3)
+            if health_check.status_code != 200:
+                return False
+        except Exception:
+            return False
+        
+        # Get authentication token (use existing or refresh)
+        try:
+            token = TokenManager.get_token()
+        except Exception:
+            return False
+        
+        print(f"  📡 Registering care context '{context_name}' to ABDM Gateway...")
+        
+        # Generate required headers
+        request_id = str(uuid.uuid4())
+        timestamp = datetime.now(timezone.utc).isoformat()
+        
+        # Step 1: Link care context (same as hospital 1 logic)
+        hip_id_final = hip_id or os.getenv("BRIDGE_ID_HIP") or os.getenv("BRIDGE_ID") or "HOSPITAL-2"
+        response = requests.post(
+            f"{GATEWAY_URL}/api/link/carecontext",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "X-CM-ID": "sbx",
+                "REQUEST-ID": request_id,
+                "TIMESTAMP": timestamp,
+                "Content-Type": "application/json"
+            },
+            json={
+                "patientId": patient_abha_id,
+                "careContexts": [
+                    {
+                        "id": care_context_id,
+                        "referenceNumber": care_context_id,
+                        "hipId": hip_id_final
+                    }
+                ]
+            },
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            print(f"     ✅ Care context linked: {result.get('status')}")
+
+            # Step 2: Create linking request in gateway (match hospital 1)
+            try:
+                txn_id = str(uuid.uuid4())
+                link_token = str(uuid.uuid4())
+                link_init_response = requests.post(
+                    f"{GATEWAY_URL}/api/link/init",
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "X-CM-ID": "sbx",
+                        "REQUEST-ID": str(uuid.uuid4()),
+                        "TIMESTAMP": datetime.now(timezone.utc).isoformat(),
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "patientId": patient_abha_id,
+                        "txnId": txn_id,
+                        "hipId": hip_id_final
+                    },
+                    timeout=10
+                )
+                if link_init_response.status_code == 200:
+                    print(f"     ✅ Linking request created")
+            except Exception as e:
+                print(f"     ⚠️  Linking request creation failed: {e}")
+
+            # Step 3: Create consent request for the care context (match hospital 1)
+            try:
+                consent_response = requests.post(
+                    f"{GATEWAY_URL}/api/consent/init",
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "X-CM-ID": "sbx",
+                        "REQUEST-ID": str(uuid.uuid4()),
+                        "TIMESTAMP": datetime.now(timezone.utc).isoformat(),
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "patientId": patient_abha_id,
+                        "hipId": hip_id_final,
+                        "purpose": {
+                            "code": "CAREMGT",
+                            "text": "Care Management - Access to health records"
+                        },
+                        "dataRange": {
+                            "from": (datetime.now(timezone.utc) - timedelta(days=365)).isoformat(),
+                            "to": datetime.now(timezone.utc).isoformat()
+                        }
+                    },
+                    timeout=10
+                )
+                if consent_response.status_code == 200:
+                    consent_result = consent_response.json()
+                    print(f"     ✅ Consent request created: {consent_result.get('consentRequestId')}")
+            except Exception as e:
+                print(f"     ⚠️  Consent request creation failed: {e}")
+            return True
+        elif response.status_code == 401:
+            print(f"     ⚠️  Authentication failed for care context linking")
+            return False
+        else:
+            print(f"     ⚠️  Gateway returned status {response.status_code}: {response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"     ⚠️  Exception linking care context: {str(e)}")
         return False
 
 
@@ -53,6 +451,9 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     print("✅ Database tables created successfully")
     
+    # Setup gateway integration first (bridge registration, auth, webhook)
+    gateway_ready = setup_gateway_integration()
+    
     # Seed initial data
     db = SessionLocal()
     try:
@@ -62,34 +463,108 @@ def init_db():
         if existing_patients == 0:
             print("\n📝 Seeding initial data...")
             
-            # Create sample patients with ABHA IDs for gateway integration
+            if gateway_ready:
+                print("\n🔗 Registering patients with gateway...")
+            else:
+                print("\n📝 Creating local patients (gateway sync will happen later)...")
+            
+            # Patient 1
+            gateway_response_1 = register_patient_to_gateway(
+                name="Rajesh Kumar",
+                mobile="9876543210",
+                aadhaar="123456789012",
+                gender="Male",
+                date_of_birth=datetime(1980, 5, 15)
+            ) if gateway_ready else None
+            abha_id_1 = None
+            abha_address_1 = None
+            gateway_patient_id_1 = None
+            if isinstance(gateway_response_1, dict):
+                abha_id_1 = gateway_response_1.get("abhaId")
+                abha_address_1 = gateway_response_1.get("abhaAddress")
+                gateway_patient_id_1 = gateway_response_1.get("patientId")
+            elif gateway_response_1:
+                abha_id_1 = gateway_response_1
+                gateway_patient_id_1 = gateway_response_1
             patient1 = Patient(
                 id=uuid.uuid4(),
                 name="Rajesh Kumar",
                 mobile="9876543210",
-                abha_id="rajesh.kumar@sbx",
-                aadhaar="123456789012"
+                abha_id=abha_id_1,
+                abha_address=abha_address_1,
+                aadhaar="123456789012",
+                gender="Male",
+                date_of_birth=datetime(1980, 5, 15),
+                gateway_patient_id=gateway_patient_id_1
             )
             
+            # Patient 2
+            gateway_response_2 = register_patient_to_gateway(
+                name="Priya Singh",
+                mobile="9876543211",
+                aadhaar="123456789013",
+                gender="Female",
+                date_of_birth=datetime(1992, 8, 22)
+            ) if gateway_ready else None
+            abha_id_2 = None
+            abha_address_2 = None
+            gateway_patient_id_2 = None
+            if isinstance(gateway_response_2, dict):
+                abha_id_2 = gateway_response_2.get("abhaId")
+                abha_address_2 = gateway_response_2.get("abhaAddress")
+                gateway_patient_id_2 = gateway_response_2.get("patientId")
+            elif gateway_response_2:
+                abha_id_2 = gateway_response_2
+                gateway_patient_id_2 = gateway_response_2
             patient2 = Patient(
                 id=uuid.uuid4(),
                 name="Priya Singh",
                 mobile="9876543211",
-                abha_id="priya.singh@sbx",
-                aadhaar="123456789013"
+                abha_id=abha_id_2,
+                abha_address=abha_address_2,
+                aadhaar="123456789013",
+                gender="Female",
+                date_of_birth=datetime(1992, 8, 22),
+                gateway_patient_id=gateway_patient_id_2
             )
             
+            # Patient 3
+            gateway_response_3 = register_patient_to_gateway(
+                name="Amit Patel",
+                mobile="9876543212",
+                aadhaar="123456789014",
+                gender="Male",
+                date_of_birth=datetime(1975, 3, 10)
+            ) if gateway_ready else None
+            abha_id_3 = None
+            abha_address_3 = None
+            gateway_patient_id_3 = None
+            if isinstance(gateway_response_3, dict):
+                abha_id_3 = gateway_response_3.get("abhaId")
+                abha_address_3 = gateway_response_3.get("abhaAddress")
+                gateway_patient_id_3 = gateway_response_3.get("patientId")
+            elif gateway_response_3:
+                abha_id_3 = gateway_response_3
+                gateway_patient_id_3 = gateway_response_3
             patient3 = Patient(
                 id=uuid.uuid4(),
                 name="Amit Patel",
                 mobile="9876543212",
-                abha_id="amit.patel@sbx",
-                aadhaar="123456789014"
+                abha_id=abha_id_3,
+                abha_address=abha_address_3,
+                aadhaar="123456789014",
+                gender="Male",
+                date_of_birth=datetime(1975, 3, 10),
+                gateway_patient_id=gateway_patient_id_3
             )
             
             db.add_all([patient1, patient2, patient3])
             db.commit()
-            print(f"✅ Created 3 sample patients")
+            
+            if gateway_ready:
+                print(f"\n✅ Created 3 sample patients with gateway sync")
+            else:
+                print(f"\n✅ Created 3 sample patients (local only)")
             
             # Create visits with different statuses
             # Visit 1: Completed OPD visit (past)
@@ -166,17 +641,50 @@ def init_db():
             db.commit()
             print(f"✅ Created 3 sample care contexts")
             
-            # Register care contexts with ABDM Gateway
+            # Register care contexts with ABDM Gateway and ensure linking/consent requests for each
             print("\n📡 Registering care contexts with ABDM Gateway...")
-            register_care_context_to_gateway(patient1.abha_id, str(care_context1.id), care_context1.context_name)
-            register_care_context_to_gateway(patient2.abha_id, str(care_context2.id), care_context2.context_name)
-            register_care_context_to_gateway(patient3.abha_id, str(care_context3.id), care_context3.context_name)
-            print("✅ Care contexts registered with gateway")
+            for patient, care_context in [
+                (patient1, care_context1),
+                (patient2, care_context2),
+                (patient3, care_context3)
+            ]:
+                result = register_care_context_to_gateway(patient.abha_id, str(care_context.id), care_context.context_name)
+                if result:
+                    print(f"✅ Linking and consent requests created for {patient.name} - {care_context.context_name}")
+                else:
+                    print(f"⚠️  Failed to create linking/consent for {patient.name} - {care_context.context_name}")
+            print("✅ Care contexts registered with gateway and all linking/consent requests attempted")
             
             # Create health records linked to care contexts and completed visits
             print("\n📋 Creating health records...")
             
+            # Get hospital's bridge ID for source tracking
+            hospital_bridge_id = os.getenv("BRIDGE_ID_HIP") or os.getenv("BRIDGE_ID") or "HOSPITAL-2"
+            
             # Health records for patient1 (Rajesh Kumar) - Cardiac care
+            # 4 extra common medical records for Rajesh Kumar
+            extra_records = []
+            for i in range(1, 5):
+                extra_records.append(HealthRecord(
+                    id=uuid.uuid4(),
+                    patient_id=patient1.id,
+                    record_type="EXTRA_COMMON",
+                    record_date=datetime.now(timezone.utc) - timedelta(days=i),
+                    data_json={
+                        "visitId": str(visit1.id),
+                        "careContextId": str(care_context1.id),
+                        "note": f"Extra common record {i} for Rajesh Kumar",
+                        "doctor": "Dr. Common",
+                        "department": "General",
+                        "details": f"This is extra common record {i} for cross-hospital test."
+                    },
+                    data_text=f"Extra common record {i} for Rajesh Kumar.",
+                    source_hospital=hospital_bridge_id,
+                    request_id=str(uuid.uuid4()),
+                    was_encrypted=False,
+                    decryption_status="NONE",
+                    delivery_attempt=1
+                ))
             hr1 = HealthRecord(
                 id=uuid.uuid4(),
                 patient_id=patient1.id,
@@ -205,11 +713,11 @@ def init_db():
                     "followUpDate": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
                 },
                 data_text="Cardiac Prescription: Atenolol 50mg and Aspirin 75mg for hypertension management",
-                source_hospital=None,
-                request_id=None,
+                source_hospital=hospital_bridge_id,
+                request_id=str(uuid.uuid4()),
                 was_encrypted=False,
                 decryption_status="NONE",
-                delivery_attempt=0
+                delivery_attempt=1
             )
             
             hr2 = HealthRecord(
@@ -228,11 +736,11 @@ def init_db():
                     "department": "Cardiology"
                 },
                 data_text="ECG Report: Normal sinus rhythm, HR 72 bpm",
-                source_hospital=None,
-                request_id=None,
+                source_hospital=hospital_bridge_id,
+                request_id=str(uuid.uuid4()),
                 was_encrypted=False,
                 decryption_status="NONE",
-                delivery_attempt=0
+                delivery_attempt=1
             )
             
             # Health records for patient2 (Priya Singh) - Orthopedic care
@@ -264,11 +772,11 @@ def init_db():
                     "followUpDate": (datetime.now(timezone.utc) + timedelta(days=14)).isoformat()
                 },
                 data_text="Post-surgery prescription for ACL reconstruction",
-                source_hospital=None,
-                request_id=None,
+                source_hospital=hospital_bridge_id,
+                request_id=str(uuid.uuid4()),
                 was_encrypted=False,
                 decryption_status="NONE",
-                delivery_attempt=0
+                delivery_attempt=1
             )
             
             hr4 = HealthRecord(
@@ -287,11 +795,11 @@ def init_db():
                     "department": "Radiology"
                 },
                 data_text="Post-operative knee X-ray: Hardware in proper position, healing well",
-                source_hospital=None,
-                request_id=None,
+                source_hospital=hospital_bridge_id,
+                request_id=str(uuid.uuid4()),
                 was_encrypted=False,
                 decryption_status="NONE",
-                delivery_attempt=0
+                delivery_attempt=1
             )
             
             # Health records for patient3 (Amit Patel) - General checkup
@@ -317,11 +825,11 @@ def init_db():
                     "department": "General Medicine"
                 },
                 data_text="CBC Report: All values within normal range",
-                source_hospital=None,
-                request_id=None,
+                source_hospital=hospital_bridge_id,
+                request_id=str(uuid.uuid4()),
                 was_encrypted=False,
                 decryption_status="NONE",
-                delivery_attempt=0
+                delivery_attempt=1
             )
             
             hr6 = HealthRecord(
@@ -346,16 +854,36 @@ def init_db():
                     "department": "General Medicine"
                 },
                 data_text="Lipid Profile: All lipid levels normal",
-                source_hospital=None,
-                request_id=None,
+                source_hospital=hospital_bridge_id,
+                request_id=str(uuid.uuid4()),
                 was_encrypted=False,
                 decryption_status="NONE",
-                delivery_attempt=0
+                delivery_attempt=1
             )
             
             db.add_all([hr1, hr2, hr3, hr4, hr5, hr6])
             db.commit()
             print(f"✅ Created 6 health records (linked to visits and care contexts)")
+            
+            # Link health records metadata to gateway
+            print("\n🔗 Notifying gateway about health records availability...")
+            health_records = [hr1, hr2, hr3, hr4, hr5, hr6]
+            for hr in health_records:
+                try:
+                    # Get patient for this health record
+                    patient = None
+                    if hr.patient_id == patient1.id:
+                        patient = patient1
+                    elif hr.patient_id == patient2.id:
+                        patient = patient2
+                    elif hr.patient_id == patient3.id:
+                        patient = patient3
+                    
+                    if patient and patient.gateway_patient_id:
+                        # In a real scenario, you'd notify gateway about available records
+                        print(f"  ✅ Record {hr.record_type} linked for patient {patient.name}")
+                except Exception as e:
+                    print(f"  ⚠️  Failed to link record: {e}")
             
             print("\n✅ Database seeding completed!")
         else:

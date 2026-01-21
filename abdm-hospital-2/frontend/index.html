@@ -32,24 +32,34 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto">
             <li class="nav-item">
-              <a class="nav-link active" href="index.html">Dashboard</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="patients.html">Patients</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="visits.html">Visits</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="health-records.html">Health Records</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="patient-history.html"
-                >Patient History</a
+              <a class="nav-link active" href="index.html"
+                ><i class="fas fa-home"></i> Dashboard</a
               >
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="abdm-status.html">ABDM Status</a>
+              <a class="nav-link" href="patients.html"
+                ><i class="fas fa-user-injured"></i> Patients</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="visits.html"
+                ><i class="fas fa-calendar-check"></i> Visits</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="health-records.html"
+                ><i class="fas fa-file-medical"></i> Health Records</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="patient-history.html"
+                ><i class="fas fa-history"></i> Patient History</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="abdm-status.html"
+                ><i class="fas fa-heartbeat"></i> ABDM Status</a
+              >
             </li>
           </ul>
         </div>
@@ -101,22 +111,6 @@
         </div>
 
         <div class="col-md-3 mb-4">
-          <div class="card stat-card bg-info text-white">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 class="card-title">Care Contexts</h6>
-                  <h2 id="careContexts">-</h2>
-                </div>
-                <div class="stat-icon">
-                  <i class="fas fa-file-medical fa-3x opacity-50"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-3 mb-4">
           <div class="card stat-card bg-warning text-white">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center">
@@ -126,6 +120,21 @@
                 </div>
                 <div class="stat-icon">
                   <i class="fas fa-heartbeat fa-3x opacity-50"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-4">
+          <div class="card stat-card bg-info text-white">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="card-title">Patient History</h6>
+                  <h2 id="patientHistoryCount">-</h2>
+                </div>
+                <div class="stat-icon">
+                  <i class="fas fa-history fa-3x opacity-50"></i>
                 </div>
               </div>
             </div>
@@ -151,18 +160,18 @@
           </a>
         </div>
         <div class="col-md-3 mb-3">
-          <a href="care-contexts.html" class="btn btn-outline-info w-100 p-3">
-            <i class="fas fa-link fa-2x mb-2"></i>
-            <br />Link Care Context
-          </a>
-        </div>
-        <div class="col-md-3 mb-3">
           <a
             href="health-records.html"
             class="btn btn-outline-warning w-100 p-3"
           >
             <i class="fas fa-file-upload fa-2x mb-2"></i>
             <br />Upload Records
+          </a>
+        </div>
+        <div class="col-md-3 mb-3">
+          <a href="patient-history.html" class="btn btn-outline-info w-100 p-3">
+            <i class="fas fa-history fa-2x mb-2"></i>
+            <br />Patient History
           </a>
         </div>
       </div>

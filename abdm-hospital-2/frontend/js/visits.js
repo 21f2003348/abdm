@@ -21,25 +21,49 @@ document.addEventListener("DOMContentLoaded", function () {
   // Load visits
   loadVisits();
 
-  // Event listeners
-  document
-    .getElementById("createVisitForm")
-    .addEventListener("submit", handleCreateVisit);
+  // Load patients for dropdown
+  setTimeout(loadPatientDropdown, 200);
 
-  // Patient search button
-  document
-    .getElementById("searchPatientBtn")
-    .addEventListener("click", handleSearchPatient);
+  // Event listeners (guarded so one missing element doesn't break the whole page)
+  const createVisitForm = document.getElementById("createVisitForm");
+  if (createVisitForm) {
+    createVisitForm.addEventListener("submit", handleCreateVisit);
+  } else {
+    console.error("createVisitForm not found");
+  }
 
-  // Enter key on patient search input
-  document
-    .getElementById("patientSearchInput")
-    .addEventListener("keypress", (e) => {
+  const searchPatientBtn = document.getElementById("searchPatientBtn");
+  if (searchPatientBtn) {
+    searchPatientBtn.addEventListener("click", handleSearchPatient);
+  } else {
+    console.error("searchPatientBtn not found");
+  }
+
+  const searchPatientModalBtn = document.getElementById(
+    "searchPatientModalBtn",
+  );
+  if (searchPatientModalBtn) {
+    searchPatientModalBtn.addEventListener("click", handleSearchPatient);
+  }
+
+  const patientDropdown = document.getElementById("patientDropdown");
+  if (patientDropdown) {
+    patientDropdown.addEventListener("change", handleDropdownPatientSelect);
+  } else {
+    console.error("patientDropdown not found");
+  }
+
+  const patientSearchInput = document.getElementById("patientSearchInput");
+  if (patientSearchInput) {
+    patientSearchInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
         handleSearchPatient();
       }
     });
+  } else {
+    console.error("patientSearchInput not found");
+  }
 
   // Check for patient_id in URL params
   const urlParams = new URLSearchParams(window.location.search);
@@ -48,6 +72,103 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("patientId").value = patientId;
   }
 });
+
+// Load patients and populate dropdown
+async function loadPatientDropdown() {
+  try {
+    const dropdown = document.getElementById("patientDropdown");
+    const statusEl = document.getElementById("patientDropdownStatus");
+    if (!dropdown) {
+      console.error("Patient dropdown element not found!");
+      return;
+    }
+
+    dropdown.innerHTML = '<option value="">-- Select Patient --</option>';
+    dropdown.disabled = true;
+    if (statusEl) statusEl.textContent = "Loading patients...";
+
+    console.log("[DEBUG] Loading patients list from /api/patient/list ...");
+    const patients = await api.patients.list();
+    console.log("[DEBUG] Patients fetched for dropdown:", patients);
+
+    if (!Array.isArray(patients)) {
+      console.error("Expected patients to be an array but got:", patients);
+      dropdown.innerHTML =
+        '<option value="">Error: invalid patients response</option>';
+      dropdown.disabled = true;
+      if (statusEl)
+        statusEl.textContent =
+          "Error: /api/patient/list did not return an array.";
+      return;
+    }
+
+    if (patients.length === 0) {
+      dropdown.innerHTML =
+        '<option value="">No patients registered yet</option>';
+      dropdown.disabled = true;
+      if (statusEl)
+        statusEl.textContent = "No patients found. Register a patient first.";
+      return;
+    }
+
+    // Sort for nicer UX
+    const sorted = [...patients].sort((a, b) =>
+      String(a.name || "").localeCompare(String(b.name || "")),
+    );
+
+    sorted.forEach((patient) => {
+      const option = document.createElement("option");
+      option.value = patient.patientId;
+      // Show patient name, mobile, and ABHA ID if available
+      let displayText = `${patient.name} - ${patient.mobile}`;
+      if (patient.abhaId) {
+        displayText += ` (${patient.abhaId})`;
+      }
+      option.textContent = displayText;
+      option.dataset.patient = JSON.stringify(patient);
+      dropdown.appendChild(option);
+    });
+
+    dropdown.disabled = false;
+    console.log(`[DEBUG] Dropdown populated with ${patients.length} patients`);
+    if (statusEl) statusEl.textContent = `Loaded ${patients.length} patients.`;
+  } catch (error) {
+    console.error("Error loading patient dropdown:", error);
+    const dropdown = document.getElementById("patientDropdown");
+    const statusEl = document.getElementById("patientDropdownStatus");
+    if (dropdown) {
+      dropdown.innerHTML = '<option value="">Error loading patients</option>';
+      dropdown.disabled = true;
+    }
+    if (statusEl)
+      statusEl.textContent = `Error: ${error && error.message ? error.message : String(error)}`;
+    utils.showError("Failed to load patients for dropdown");
+  }
+}
+
+// Handle patient selection from dropdown
+function handleDropdownPatientSelect(e) {
+  const selectedOption = e.target.options[e.target.selectedIndex];
+  if (selectedOption.value) {
+    try {
+      const patient = JSON.parse(selectedOption.dataset.patient);
+      selectPatient(patient);
+      // Also clear the search input when dropdown is used
+      document.getElementById("patientSearchInput").value = "";
+    } catch (error) {
+      console.error("Error parsing patient data:", error);
+      utils.showError("Error selecting patient from dropdown");
+    }
+  } else {
+    // Clear patient details if none selected
+    selectedPatient = null;
+    document.getElementById("patientDetailsDiv").style.display = "none";
+    document.getElementById("patientId").value = "";
+    document.getElementById("patientName").textContent = "";
+    document.getElementById("patientMobile").textContent = "";
+    document.getElementById("patientAbha").textContent = "";
+  }
+}
 
 // Load all visits
 async function loadVisits() {
@@ -133,6 +254,14 @@ function renderVisitRow(visit) {
   const statusClass = getStatusClass(visit.status);
   const visitDate = utils.formatDate(visit.visitDate || visit.visit_date);
 
+  let actions = `<button class="btn btn-sm btn-primary" onclick="viewVisit('${visit.visitId || visit.id}')">
+    <i class="fas fa-eye"></i>
+  </button>`;
+  if (visit.status === "Scheduled" || visit.status === "In Progress") {
+    actions += ` <button class="btn btn-sm btn-success" onclick="markVisitCompleted('${visit.visitId || visit.id}')">
+      <i class="fas fa-check"></i> Mark as Completed
+    </button>`;
+  }
   return `
     <tr>
       <td>
@@ -144,13 +273,23 @@ function renderVisitRow(visit) {
       <td>${visit.department || "N/A"}</td>
       <td>${visit.doctorId || "N/A"}</td>
       <td><span class="badge ${statusClass}">${visit.status || "Unknown"}</span></td>
-      <td>
-        <button class="btn btn-sm btn-primary" onclick="viewVisit('${visit.visitId || visit.id}')">
-          <i class="fas fa-eye"></i>
-        </button>
-      </td>
+      <td>${actions}</td>
     </tr>
   `;
+// Mark visit as completed
+async function markVisitCompleted(visitId) {
+  try {
+    utils.showLoading();
+    await api.visits.updateStatus(visitId, "Completed");
+    utils.showSuccess("Visit marked as completed!");
+    await loadVisits();
+  } catch (error) {
+    utils.showError("Failed to mark visit as completed: " + error.message);
+  } finally {
+    utils.hideLoading();
+  }
+}
+window.markVisitCompleted = markVisitCompleted;
 }
 
 // Get status badge class
@@ -210,6 +349,7 @@ async function handleCreateVisit(e) {
     // Reset patient selection
     selectedPatient = null;
     document.getElementById("patientSearchInput").value = "";
+    document.getElementById("patientDropdown").value = "";
     document.getElementById("patientDetailsDiv").style.display = "none";
     document.getElementById("patientId").value = "";
     document.getElementById("patientName").textContent = "";
@@ -274,6 +414,11 @@ async function handleSearchPatient() {
 
     if (foundPatient) {
       selectPatient(foundPatient);
+      // Also update dropdown to show selected patient
+      const dropdown = document.getElementById("patientDropdown");
+      if (dropdown) {
+        dropdown.value = foundPatient.patientId;
+      }
     } else {
       utils.showError(`No patient found with ${searchType}: ${searchInput}`);
     }
@@ -296,6 +441,12 @@ function selectPatient(patient) {
   document.getElementById("patientAbha").textContent =
     patient.abhaId || "Not linked";
   document.getElementById("patientDetailsDiv").style.display = "block";
+
+  // Update dropdown to show selected patient
+  const dropdown = document.getElementById("patientDropdown");
+  if (dropdown) {
+    dropdown.value = patient.patientId;
+  }
 
   // Clear search input
   document.getElementById("patientSearchInput").value = "";
@@ -428,14 +579,6 @@ async function viewVisit(visitId) {
   } finally {
     utils.hideLoading();
   }
-}
-
-// Create care context for visit
-function createCareContextForVisit() {
-  if (!currentVisit) return;
-
-  // Navigate to care contexts page with visit info
-  window.location.href = `care-contexts.html?patient_id=${currentVisit.patient_id}&visit_id=${currentVisit.visit_id || currentVisit.id}`;
 }
 
 // Add health record for visit

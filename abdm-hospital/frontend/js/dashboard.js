@@ -15,7 +15,20 @@ async function loadDashboardData() {
       checkABDMStatus(),
       loadRecentPatients(),
       loadWebhookNotifications(),
+      loadPatientHistoryCount(),
     ]);
+    async function loadPatientHistoryCount() {
+      try {
+        // Example: count all health records as patient history
+        const records = await api.healthRecords.list();
+        const count = Array.isArray(records)
+          ? records.length
+          : records?.length || 0;
+        document.getElementById("patientHistoryCount").textContent = count;
+      } catch (error) {
+        document.getElementById("patientHistoryCount").textContent = "0";
+      }
+    }
   } catch (error) {
     console.error("Error loading dashboard data:", error);
   }

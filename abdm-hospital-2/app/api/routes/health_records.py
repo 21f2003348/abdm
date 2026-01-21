@@ -16,7 +16,9 @@ from app.database.models import HealthRecord, Patient
 from app.services.health_data_service import (
     get_health_records_for_patient,
     get_external_health_records,
-    get_health_record_summary
+    get_health_record_summary,
+    create_care_context_for_record,
+    get_patient_complete_history
 )
 
 router = APIRouter(prefix="/api/health-records", tags=["health-records"])
@@ -29,10 +31,10 @@ router = APIRouter(prefix="/api/health-records", tags=["health-records"])
 class HealthRecordResponse(BaseModel):
     id: str
     type: str
-    date: str
+    date: datetime
     sourceHospital: Optional[str]
     data: Dict[str, Any]
-    receivedAt: str
+    receivedAt: Optional[datetime]
     requestId: Optional[str] = None
     # Additional fields for frontend display
     patientId: Optional[str] = None
@@ -94,6 +96,63 @@ async def list_all_patients_with_records(
         "total": len(result),
         "patients": result
     }
+
+
+@router.get("/all", response_model=List[HealthRecordResponse])
+async def list_all_health_records(db: Session = Depends(get_db)):
+    """
+    Return all health records in the local database (for admin/frontend use).
+    """
+    from app.database.models import CareContext
+    records = db.execute(select(HealthRecord)).scalars().all()
+    result = []
+    for record in records:
+        # Get patient info for display
+        patient = db.execute(select(Patient).where(Patient.id == record.patient_id)).scalar_one_or_none()
+        # Always ensure data_json is a dict
+        data = getattr(record, 'data_json', {})
+        if not isinstance(data, dict):
+            data = {}
+
+        # Try to find care context for this record (by naming convention)
+        context_name = f"{record.record_type}_{record.record_date.date().isoformat()}_{str(record.id)[:8]}"
+        care_context = db.execute(
+            select(CareContext).where(
+                (CareContext.patient_id == record.patient_id) &
+                (CareContext.context_name == context_name)
+            )
+        ).scalar_one_or_none()
+        care_context_id = str(care_context.id) if care_context else "N/A"
+
+        # Try to extract visit_id from data_json if present
+        visit_id = data.get('visit_id') or data.get('visitId')
+
+        # Always include data_json as 'data' in the response
+        # Patch: Always provide valid ISO date for created_at/updated_at (fallback to record_date)
+        created_at = getattr(record, 'created_at', None)
+        updated_at = getattr(record, 'updated_at', None)
+        record_date = record.record_date if hasattr(record, 'record_date') else None
+        result.append({
+            'id': str(record.id),
+            'type': getattr(record, 'record_type', None),
+            'date': record_date.isoformat() if record_date else None,
+            'sourceHospital': getattr(record, 'source_hospital', None),
+            'data': data,
+            'receivedAt': record_date.isoformat() if record_date else None,
+            'requestId': getattr(record, 'request_id', None),
+            'patientId': str(record.patient_id),
+            'patientName': patient.name if patient else None,
+            'title': data.get('title') or getattr(record, 'record_type', None),
+            'doctor_name': data.get('doctorName') or data.get('doctor_name') or getattr(record, 'doctor_name', None),
+            'department': data.get('department') or getattr(record, 'department', None),
+            'content': data.get('content') or getattr(record, 'data_text', None),
+            'created_at': (created_at.isoformat() if created_at else (record_date.isoformat() if record_date else None)),
+            'updated_at': (updated_at.isoformat() if updated_at else (record_date.isoformat() if record_date else None)),
+            'care_context_id': care_context_id,
+            'visit_id': visit_id,
+            # Add more fields as needed for modal
+        })
+    return result
 
 
 @router.get("/{patient_id}", response_model=List[HealthRecordResponse])
@@ -290,6 +349,19 @@ async def create_health_record(
             detail=f"Patient {patient_id} not found"
         )
     
+    # Get source hospital (local hospital bridge ID)
+    source_hospital = None
+    request_id = None
+    try:
+        from app.services.gateway_service import TokenManager
+        bridge_id = TokenManager.get_bridge_details()[0]
+        source_hospital = bridge_id
+        # Generate a request ID for local records (can be used for tracking)
+        request_id = f"LOCAL-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{str(uuid.uuid4())[:8]}"
+    except Exception:
+        # If gateway not configured, use default
+        source_hospital = "LOCAL-HOSPITAL"
+    
     # Create new health record
     new_record = HealthRecord(
         id=uuid.uuid4(),
@@ -298,8 +370,8 @@ async def create_health_record(
         record_date=datetime.fromisoformat(request.recordDate),
         data_json=request.data,
         data_text=request.dataText,
-        source_hospital=None,  # Local record
-        request_id=None,
+        source_hospital=source_hospital,
+        request_id=request_id,
         was_encrypted=False,
         decryption_status="NONE",
         delivery_attempt=0,
@@ -311,7 +383,24 @@ async def create_health_record(
     db.commit()
     db.refresh(new_record)
     
-    # Return with patientName for frontend
+    # Auto-create care context and link to gateway
+    care_context_result = await create_care_context_for_record(
+        db=db,
+        patient_id=patient_uuid,
+        record_id=new_record.id,
+        record_type=request.recordType,
+        record_date=request.recordDate
+    )
+    
+    # Extract care context ID from result
+    care_context_id = None
+    if care_context_result and care_context_result.get("careContext"):
+        care_context_id = care_context_result["careContext"].get("id")
+    
+    # Extract fields from data_json for response
+    data = new_record.data_json or {}
+    visit_id = data.get("visitId") or data.get("visit_id")
+    
     return {
         "id": str(new_record.id),
         "type": new_record.record_type,
@@ -320,84 +409,20 @@ async def create_health_record(
         "data": new_record.data_json,
         "receivedAt": new_record.created_at.isoformat(),
         "requestId": new_record.request_id,
-        "patientId": str(patient_uuid),
-        "patientName": patient.name
+        "patientId": str(new_record.patient_id),
+        "patientName": patient.name if patient else None,
+        "title": data.get("title") or new_record.record_type,
+        "doctor_name": data.get("doctorName") or data.get("doctor_name"),
+        "department": data.get("department"),
+        "content": data.get("content") or new_record.data_text,
+        "visitId": visit_id,
+        "visit_id": visit_id,  # For backward compatibility
+        "careContextId": care_context_id,
+        "care_context_id": care_context_id,  # For backward compatibility
+        "created_at": new_record.created_at.isoformat(),
+        "updated_at": new_record.updated_at.isoformat(),
+        "careContext": care_context_result  # Include care context creation result
     }
-
-
-@router.post("/{patient_id}/{record_id}/notify-gateway")
-async def notify_gateway_about_record(
-    patient_id: str,
-    record_id: str,
-    db: Session = Depends(get_db)
-):
-    """
-    Notify ABDM Gateway about a newly created health record.
-    This allows the gateway to index the record for sharing.
-    
-    Path Parameters:
-    - patient_id: UUID of the patient
-    - record_id: UUID of the health record
-    
-    Returns:
-    - Notification status from gateway
-    """
-    from app.services.gateway_service import notify_gateway_new_record
-    
-    # Verify record exists
-    try:
-        patient_uuid = uuid.UUID(patient_id)
-        record_uuid = uuid.UUID(record_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
-    
-    record = db.execute(
-        select(HealthRecord).where(
-            and_(
-                HealthRecord.id == record_uuid,
-                HealthRecord.patient_id == patient_uuid
-            )
-        )
-    ).scalar_one_or_none()
-    
-    if not record:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Health record {record_id} not found for patient {patient_id}"
-        )
-    
-    # Get patient info
-    patient = db.execute(
-        select(Patient).where(Patient.id == patient_uuid)
-    ).scalar_one_or_none()
-    
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
-    
-    # Prepare notification payload
-    payload = {
-        "patientId": str(patient_uuid),
-        "patientAbhaId": patient.abha_id,
-        "recordId": str(record_uuid),
-        "recordType": record.record_type,
-        "recordDate": record.record_date.isoformat(),
-        "createdAt": record.created_at.isoformat(),
-        "title": record.data_json.get("title", f"{record.record_type} Record")
-    }
-    
-    # Notify gateway
-    try:
-        response = await notify_gateway_new_record(payload)
-        return {
-            "success": True,
-            "message": "Gateway notified successfully",
-            "gatewayResponse": response
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to notify gateway: {str(e)}"
-        )
 
 
 @router.delete("/{patient_id}/{record_id}")
@@ -536,6 +561,28 @@ async def get_records_from_hospital(
     return records
 
 
-# ============================================================================
-# Additional Helper Endpoints
-# ============================================================================
+@router.get("/{patient_id}/complete-history")
+async def get_complete_patient_history(
+    patient_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get complete patient history including:
+    - Local records created at this hospital
+    - External records received from other hospitals via ABDM Gateway
+    
+    This endpoint works with both:
+    - Patient UUID (local database identifier)
+    - Patient ABHA ID (gateway identifier)
+    
+    Returns:
+    - Patient details with both UUID and ABHA ID
+    - Separate local and external records
+    - Summary statistics
+    """
+    history = await get_patient_complete_history(db=db, patient_identifier=patient_id)
+    
+    if history.get("error"):
+        raise HTTPException(status_code=404, detail=history.get("error"))
+    
+    return history

@@ -1,7 +1,22 @@
-cd D:\RVCE\2nd-Year\3rd-Sem-class-notes\Main-EL-3-Sem\Model_testing\ABDM\abdm-gateway
+cd D:\RVCE\2nd-Year\3rd-Sem-class-notes\Main-EL-3-Sem\Model_testing\ABDM\abdm-gateway-1
 .venv/Scripts/Activate
 uvicorn app.main:app --reload --port 8000
 
 
 cd abdm-hospital
 uvicorn app.main:app --reload --port 8001
+
+
+
+cd D:\RVCE\2nd-Year\3rd-Sem-class-notes\Main-EL-3-Sem\Model_testing\ABDM\abdm-gateway-1
+.venv/Scripts/Activate
+uvicorn app.main:app --reload --port 8000
+
+
+cd D:\RVCE\2nd-Year\3rd-Sem-class-notes\Main-EL-3-Sem\Model_testing\ABDM\abdm-hospital-2
+.venv/Scripts/Activate
+uvicorn app.main:app --reload --port 8081
+
+cd D:\RVCE\2nd-Year\3rd-Sem-class-notes\Main-EL-3-Sem\Model_testing\ABDM\abdm-hospital
+.venv/Scripts/Activate
+uvicorn app.main:app --reload --port 8080

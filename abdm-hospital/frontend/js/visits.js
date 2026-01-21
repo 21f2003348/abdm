@@ -254,6 +254,14 @@ function renderVisitRow(visit) {
   const statusClass = getStatusClass(visit.status);
   const visitDate = utils.formatDate(visit.visitDate || visit.visit_date);
 
+  let actions = `<button class="btn btn-sm btn-primary" onclick="viewVisit('${visit.visitId || visit.id}')">
+    <i class="fas fa-eye"></i>
+  </button>`;
+  if (visit.status === "Scheduled" || visit.status === "In Progress") {
+    actions += ` <button class="btn btn-sm btn-success" onclick="markVisitCompleted('${visit.visitId || visit.id}')">
+      <i class="fas fa-check"></i> Mark as Completed
+    </button>`;
+  }
   return `
     <tr>
       <td>
@@ -265,13 +273,23 @@ function renderVisitRow(visit) {
       <td>${visit.department || "N/A"}</td>
       <td>${visit.doctorId || "N/A"}</td>
       <td><span class="badge ${statusClass}">${visit.status || "Unknown"}</span></td>
-      <td>
-        <button class="btn btn-sm btn-primary" onclick="viewVisit('${visit.visitId || visit.id}')">
-          <i class="fas fa-eye"></i>
-        </button>
-      </td>
+      <td>${actions}</td>
     </tr>
   `;
+  // Mark visit as completed
+  async function markVisitCompleted(visitId) {
+    try {
+      utils.showLoading();
+      await api.visits.updateStatus(visitId, "Completed");
+      utils.showSuccess("Visit marked as completed!");
+      await loadVisits();
+    } catch (error) {
+      utils.showError("Failed to mark visit as completed: " + error.message);
+    } finally {
+      utils.hideLoading();
+    }
+  }
+  window.markVisitCompleted = markVisitCompleted;
 }
 
 // Get status badge class

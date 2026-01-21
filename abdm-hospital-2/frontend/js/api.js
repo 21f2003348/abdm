@@ -1,5 +1,5 @@
 // API Base URL
-const API_BASE_URL = "http://127.0.0.1:8081";
+const API_BASE_URL = "http://127.0.0.1:8080";
 
 // API Helper Functions
 const api = {
@@ -92,11 +92,20 @@ const api = {
       return api.post("/api/patient/register", data);
     },
     async search(mobile) {
+      // Search endpoint doesn't exist - we'll need to add it or use list and filter
       const patients = await api.get("/api/patient/list");
+      console.log("All patients:", patients);
+      console.log("Searching for mobile:", mobile);
       const patient = patients.find(
         (p) => String(p.mobile).trim() === String(mobile).trim(),
       );
-      return patient || null;
+      console.log("Found patient:", patient);
+
+      if (patient) {
+        return { found: true, patient };
+      } else {
+        return { found: false };
+      }
     },
     async list() {
       return api.get("/api/patient/list");
@@ -115,6 +124,12 @@ const api = {
     async list() {
       return api.get("/api/visit/list");
     },
+    async getActive() {
+      return api.get("/api/visit/active");
+    },
+    async updateStatus(visitId, status) {
+      return api.patch(`/api/visit/${visitId}/status`, { status });
+    },
   },
 
   // Care Context APIs
@@ -130,28 +145,38 @@ const api = {
   // Health Records APIs
   healthRecords: {
     async create(data) {
-      if (!data.patientId) {
+      const patientId = data.patientId || data.patient_id;
+      if (!patientId) {
         throw new Error("patientId is required to create a health record");
       }
+
       const payload = {
         recordType: data.recordType,
         recordDate: data.recordDate,
-        data: data.data || {},
-        dataText: data.dataText || null,
+        data: data.data || {
+          title: data.title,
+          content: data.content,
+          doctorName: data.doctorName,
+          department: data.department,
+          fileUrl: data.fileUrl,
+        },
+        dataText: data.dataText || data.content || null,
       };
-      return api.post(`/api/health-records/${data.patientId}`, payload);
-    },
-    async notifyGateway(patientId, recordId) {
-      return api.post(
-        `/api/health-records/${patientId}/${recordId}/notify-gateway`,
-        {},
-      );
+
+      return api.post(`/api/health-records/${patientId}`, payload);
     },
     async getByPatient(patientId) {
       return api.get(`/api/health-records/${patientId}`);
     },
     async list() {
-      return api.get("/api/health-records/");
+      return api.get("/api/health-records/all");
+    },
+  },
+
+  // Consent APIs
+  consent: {
+    async init(data) {
+      return api.post("/api/consent/init", data);
     },
   },
 
@@ -242,7 +267,9 @@ const utils = {
 
   // Format date
   formatDate(dateString) {
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
     return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",

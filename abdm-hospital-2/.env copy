@@ -1,0 +1,50 @@
+# ABDM Hospital 1 - Environment Configuration Template
+# Copy this to .env and fill in values
+
+# Access Token Management
+ACCESS_TOKEN='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudC0wMDIiLCJjbUlkIjoiaG9zcGl0YWwtMSIsImV4cCI6MTc2ODgxNTY2MX0.4n-gPIx9W9i3Q7fKtXrWk6pL6abCbpSE4Wo3-nyNfRo'
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+
+# Gateway Configuration
+GATEWAY_BASE_URL='http://127.0.0.1:8000'
+GATEWAY_JWT_SECRET='htQpwTGBH0-3j2mGOTJzSujDjY-IbNzZuiLpfE_ljg0'
+
+# Client Credentials for Gateway Authentication
+CLIENT_ID='client-002'
+CLIENT_SECRET='secret-002'
+
+# Bridge Configuration
+BRIDGE_ID_HIU='hiu-001'
+ENTITY_TYPE='HIU'
+NAME='City Medical Center - Hospital 1'
+
+# Webhook Configuration
+WEBHOOK_URL='http://localhost:8080/webhook'
+
+# Identification
+X_CM_ID='hospital-1'
+SERVICE_ID=
+LINK_TOKEN=
+
+# Timing
+EXPIRY_BUFFER_MINUTES=5
+
+# Database Configuration
+DATABASE_URL='sqlite:///./abdm_hospital_1.db'
+
+# Security
+SECRET_KEY=hospital-1-secret-key-change-in-prod
+APP_NAME='City Medical Center - Hospital 1'
+APP_ENV='local'
+APP_HOST='127.0.0.1'
+APP_PORT='8080'
+LOG_LEVEL='INFO'
+BRIDGE_ID_HIP='hiu-001'
+BRIDGE_ID='hiu-001'
+HOSPITAL_WEBHOOK_URL='http://localhost:8080/webhook'
+JWT_SECRET='htQpwTGBH0-3j2mGOTJzSujDjY-IbNzZuiLpfE_ljg0'
+JWT_ALGORITHM='HS256'
+JWT_EXPIRY_SECONDS='900'
+CONSENT_CONFIG='{"consentExpiryDays": 365, "defaultConsentDuration": "12 months", "purposes": ["TREATMENT", "DIAGNOSIS", "PRESCRIPTION", "ROUTINE_CARE"], "dataTypes": ["PRESCRIPTION", "DIAGNOSTIC_REPORT", "LAB_REPORT", "IMMUNIZATION", "CONSULTATION_NOTES"]}'
+LINKING_CONFIG='{"defaultLinkingMode": "ABHA", "supportedIdTypes": ["ABHA", "MOBILE", "AADHAAR"], "otpExpirySeconds": 300, "maxOtpRetries": 3, "linkingExpiryDays": 365}'
+TOKEN_EXPIRES_IN='900'

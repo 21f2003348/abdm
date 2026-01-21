@@ -59,24 +59,13 @@ async def create_and_link_care_context(
         ]
     }
 
-    # Try to communicate with gateway, but don't fail if gateway is unavailable
-    try:
-        gateway_response = await link_care_contexts_to_gateway(payload)
-        return {
-            "localContext": new_context,
-            "gatewayResponse": gateway_response
-        }
-    except Exception as e:
-        # Log the error but still return the local context
-        print(f"Warning: Failed to link care context to gateway: {str(e)}")
-        return {
-            "localContext": new_context,
-            "gatewayResponse": {
-                "status": "pending",
-                "error": str(e),
-                "message": "Care context created locally but gateway linking failed. This is normal if gateway is not running."
-            }
-        }
+    # Communicate with gateway
+    gateway_response = await link_care_contexts_to_gateway(payload)
+
+    return {
+        "localContext": new_context,
+        "gatewayResponse": gateway_response
+    }
 
 @router.get("/api/care-context/list")
 async def list_care_contexts(db: Session = Depends(get_db)):

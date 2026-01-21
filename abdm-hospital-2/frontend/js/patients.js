@@ -83,8 +83,21 @@ async function handleRegisterPatient(e) {
 
   const name = document.getElementById("patientName").value;
   const mobile = document.getElementById("patientMobile").value;
+  const gender = document.getElementById("patientGender").value;
+  let dateOfBirth = document.getElementById("patientDateOfBirth").value;
+  if (dateOfBirth) {
+    // Convert to ISO string (YYYY-MM-DD -> YYYY-MM-DDT00:00:00.000Z)
+    dateOfBirth = new Date(dateOfBirth).toISOString();
+  }
   const abhaId = document.getElementById("patientAbhaId").value;
   const aadhaar = document.getElementById("patientAadhaar").value;
+  // Debug log
+  console.log(
+    "[DEBUG][frontend] Submitting gender:",
+    gender,
+    "dateOfBirth:",
+    dateOfBirth,
+  );
 
   try {
     utils.showLoading();
@@ -92,6 +105,8 @@ async function handleRegisterPatient(e) {
     const data = {
       name,
       mobile,
+      gender,
+      dateOfBirth,
       ...(abhaId && { abhaId }),
       ...(aadhaar && { aadhaar }),
     };

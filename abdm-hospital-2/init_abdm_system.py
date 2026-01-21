@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Comprehensive ABDM System Initialization for Hospital 2.
-Initializes database with DIFFERENT patient data set and configurations.
-Run this ONCE after system setup to fully initialize hospital 2.
+Comprehensive ABDM System Initialization for Hospital 1.
+Initializes database, creates default data, sets up authentication with gateway,
+manages bridge registration, handles consent, and generates .env configuration.
+Run this ONCE after system setup to fully initialize the hospital.
 
 Usage:
     python init_abdm_system.py
@@ -31,122 +32,100 @@ from app.database.models import Patient, Visit, CareContext, HealthRecord
 # ============================================================================
 
 GATEWAY_URL = os.getenv("GATEWAY_BASE_URL", "http://localhost:8000")
-HOSPITAL_NAME = "Apollo Health - Hospital 2"
+HOSPITAL_NAME = "City Medical Center - Hospital 2"
 HOSPITAL_PORT = 8081
 HOSPITAL_URL = f"http://localhost:{HOSPITAL_PORT}"
 HOSPITAL_WEBHOOK_URL = f"{HOSPITAL_URL}/webhook"
 
-# Default client credentials for this hospital (must exist in gateway DB)
+# Default client credentials for this hospital
 DEFAULT_CLIENT_ID = "client-002"
 DEFAULT_CLIENT_SECRET = "secret-002"
 
 # Bridge details for HIP (Health Information Provider)
-DEFAULT_BRIDGE_ID_HIP = "hip-002"
+DEFAULT_BRIDGE_ID_HIP = "HOSPITAL-2"
 DEFAULT_BRIDGE_ID_HIU = "hiu-002"
 DEFAULT_ENTITY_TYPE = "HIP"
 DEFAULT_X_CM_ID = "hospital-2"
 
 # ============================================================================
-# DIFFERENT DEFAULT DATA SETS FOR HOSPITAL 2
+# DEFAULT DATA SETS
 # ============================================================================
 
 PATIENTS_DATA = [
     {
-        "name": "Vikram Singh",
-        "mobile": "8765432100",
-        "aadhaar": "223456789012",
-        "abha_id": "vikram.singh@sbx"
+        "name": "Rajesh Kumar",
+        "mobile": "9876543210",
+        "aadhaar": "123456789012",
+        "abha_id": "rajesh.kumar@sbx"
     },
     {
-        "name": "Anjali Gupta",
-        "mobile": "8765432101",
-        "aadhaar": "223456789013",
-        "abha_id": "anjali.gupta@sbx"
+        "name": "Priya Singh",
+        "mobile": "9876543211",
+        "aadhaar": "123456789013",
+        "abha_id": "priya.singh@sbx"
     },
     {
-        "name": "Ravi Desai",
-        "mobile": "8765432102",
-        "aadhaar": "223456789014",
-        "abha_id": "ravi.desai@sbx"
+        "name": "Amit Patel",
+        "mobile": "9876543212",
+        "aadhaar": "123456789014",
+        "abha_id": "amit.patel@sbx"
     },
     {
-        "name": "Divya Reddy",
-        "mobile": "8765432103",
-        "aadhaar": "223456789015",
-        "abha_id": "divya.reddy@sbx"
-    },
-    {
-        "name": "Suresh Iyer",
-        "mobile": "8765432104",
-        "aadhaar": "223456789016",
-        "abha_id": "suresh.iyer@sbx"
+        "name": "Neha Sharma",
+        "mobile": "9876543213",
+        "aadhaar": "123456789015",
+        "abha_id": "neha.sharma@sbx"
     }
 ]
 
 VISITS_TEMPLATE = {
-    0: [  # Vikram Singh - Pediatrics
+    0: [  # Rajesh Kumar - Cardiology
         {
             "visit_type": "OPD",
-            "department": "Pediatrics",
-            "doctor_id": "DR101",
-            "days_offset": -14,
+            "department": "Cardiology",
+            "doctor_id": "DR001",
+            "days_offset": -7,
             "status": "Completed"
         },
         {
             "visit_type": "OPD",
-            "department": "Pediatrics",
-            "doctor_id": "DR101",
-            "days_offset": 7,
+            "department": "Cardiology",
+            "doctor_id": "DR001",
+            "days_offset": 5,
             "status": "Scheduled"
         }
     ],
-    1: [  # Anjali Gupta - Gynecology
-        {
-            "visit_type": "OPD",
-            "department": "Gynecology",
-            "doctor_id": "DR102",
-            "days_offset": -2,
-            "status": "Completed"
-        },
-        {
-            "visit_type": "OPD",
-            "department": "Gynecology",
-            "doctor_id": "DR102",
-            "days_offset": 30,
-            "status": "Scheduled"
-        }
-    ],
-    2: [  # Ravi Desai - Dermatology
-        {
-            "visit_type": "OPD",
-            "department": "Dermatology",
-            "doctor_id": "DR103",
-            "days_offset": -10,
-            "status": "Completed"
-        }
-    ],
-    3: [  # Divya Reddy - ENT
+    1: [  # Priya Singh - Orthopedics
         {
             "visit_type": "IPD",
-            "department": "ENT",
-            "doctor_id": "DR104",
-            "days_offset": -5,
+            "department": "Orthopedics",
+            "doctor_id": "DR002",
+            "days_offset": -3,
             "status": "Completed"
+        }
+    ],
+    2: [  # Amit Patel - General Medicine
+        {
+            "visit_type": "OPD",
+            "department": "General Medicine",
+            "doctor_id": "DR003",
+            "days_offset": 0,
+            "status": "In Progress"
         },
         {
             "visit_type": "OPD",
-            "department": "ENT",
-            "doctor_id": "DR104",
-            "days_offset": 2,
-            "status": "In Progress"
+            "department": "General Medicine",
+            "doctor_id": "DR003",
+            "days_offset": 10,
+            "status": "Scheduled"
         }
     ],
-    4: [  # Suresh Iyer - Gastroenterology
+    3: [  # Neha Sharma - Neurology
         {
             "visit_type": "OPD",
-            "department": "Gastroenterology",
-            "doctor_id": "DR105",
-            "days_offset": -8,
+            "department": "Neurology",
+            "doctor_id": "DR004",
+            "days_offset": -5,
             "status": "Completed"
         }
     ]
@@ -154,24 +133,20 @@ VISITS_TEMPLATE = {
 
 CARE_CONTEXTS_TEMPLATE = {
     0: {
-        "context_name": "Pediatric Care - 2026",
-        "description": "Child health monitoring and developmental assessment"
+        "context_name": "Cardiac Care - 2026",
+        "description": "Comprehensive cardiac monitoring and treatment program"
     },
     1: {
-        "context_name": "Women's Health - 2026",
-        "description": "Gynecological care and reproductive health management"
+        "context_name": "Orthopedic Treatment - 2026",
+        "description": "Post-surgery orthopedic care and rehabilitation"
     },
     2: {
-        "context_name": "Dermatology Treatment - 2026",
-        "description": "Skin disease diagnosis and treatment"
+        "context_name": "General Health Checkup - 2026",
+        "description": "Annual health checkup and preventive screening"
     },
     3: {
-        "context_name": "ENT Care - 2026",
-        "description": "Ear, Nose and Throat specialist care and follow-up"
-    },
-    4: {
-        "context_name": "Gastroenterology - 2026",
-        "description": "Gastrointestinal and digestive health care"
+        "context_name": "Neurology Care - 2026",
+        "description": "Neurological assessment and treatment"
     }
 }
 
@@ -272,7 +247,7 @@ def init_database():
 # ============================================================================
 
 def seed_patients() -> list:
-    """Create default patients with DIFFERENT data for Hospital 2"""
+    """Create default patients"""
     print_section("Creating Default Patients")
     
     db = SessionLocal()
@@ -281,6 +256,7 @@ def seed_patients() -> list:
         existing = db.query(Patient).count()
         if existing > 0:
             print_warning(f"Database already contains {existing} patients. Skipping patient creation.")
+            db.close()
             return db.query(Patient).all()
         
         patients = []
@@ -308,7 +284,7 @@ def seed_patients() -> list:
         db.close()
 
 def seed_visits(patients: list) -> list:
-    """Create visits with DIFFERENT specialties for Hospital 2"""
+    """Create default visits linked to patients"""
     print_section("Creating Default Visits")
     
     db = SessionLocal()
@@ -316,6 +292,7 @@ def seed_visits(patients: list) -> list:
         existing = db.query(Visit).count()
         if existing > 0:
             print_warning(f"Database already contains {existing} visits. Skipping visit creation.")
+            db.close()
             return db.query(Visit).all()
         
         visits = []
@@ -351,7 +328,7 @@ def seed_visits(patients: list) -> list:
         db.close()
 
 def seed_care_contexts(patients: list) -> list:
-    """Create care contexts with DIFFERENT specialties"""
+    """Create care contexts linked to patients"""
     print_section("Creating Care Contexts")
     
     db = SessionLocal()
@@ -359,6 +336,7 @@ def seed_care_contexts(patients: list) -> list:
         existing = db.query(CareContext).count()
         if existing > 0:
             print_warning(f"Database already contains {existing} care contexts. Skipping creation.")
+            db.close()
             return db.query(CareContext).all()
         
         care_contexts = []
@@ -389,7 +367,7 @@ def seed_care_contexts(patients: list) -> list:
         db.close()
 
 def seed_health_records(patients: list) -> list:
-    """Create DIFFERENT health records for Hospital 2 specialties"""
+    """Create health records linked to patients and care contexts"""
     print_section("Creating Health Records")
     
     db = SessionLocal()
@@ -402,271 +380,255 @@ def seed_health_records(patients: list) -> list:
         
         health_records = []
         
-        # Vikram Singh - Pediatrics records
+        # Rajesh Kumar - Cardiac records
         if len(patients) > 0:
             patient = db.query(Patient).filter_by(id=patients[0].id).first()
             
-            # Vaccination record
+            # Prescription
             hr1 = HealthRecord(
                 id=uuid.uuid4(),
                 patient_id=patient.id,
-                record_type="IMMUNIZATION",
-                record_date=datetime.now(timezone.utc) - timedelta(days=14),
+                record_type="PRESCRIPTION",
+                record_date=datetime.now(timezone.utc) - timedelta(days=7),
                 data_json={
-                    "vaccines": [
+                    "medications": [
                         {
-                            "name": "DPT (Diphtheria, Pertussis, Tetanus)",
-                            "dose": "3rd Dose",
-                            "date": "2026-01-05",
-                            "manufacturer": "Serum Institute",
-                            "batchNumber": "BATCH2026001"
+                            "name": "Atenolol 50mg",
+                            "dosage": "1 tablet daily",
+                            "duration": "30 days",
+                            "instructions": "Take in the morning after breakfast"
+                        },
+                        {
+                            "name": "Aspirin 75mg",
+                            "dosage": "1 tablet daily",
+                            "duration": "30 days",
+                            "instructions": "Take with dinner"
                         }
                     ],
-                    "administeredBy": "Dr. Rajesh (Pediatrician)",
-                    "nextDueDate": "2026-07-05",
-                    "weight": "15.5 kg",
-                    "height": "105 cm"
+                    "doctor": "Dr. Sharma (Cardiologist)",
+                    "department": "Cardiology",
+                    "diagnosis": "Hypertension with stable angina",
+                    "followUpDate": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
                 },
-                data_text="DPT Vaccination - 3rd Dose administered",
+                data_text="Cardiac Prescription: Atenolol 50mg and Aspirin 75mg",
                 was_encrypted=False,
                 decryption_status="NONE"
             )
             db.add(hr1)
             health_records.append(hr1)
             
-            # Pediatric consultation
+            # Diagnostic report
             hr2 = HealthRecord(
                 id=uuid.uuid4(),
                 patient_id=patient.id,
-                record_type="CONSULTATION_NOTES",
-                record_date=datetime.now(timezone.utc) - timedelta(days=14),
+                record_type="DIAGNOSTIC_REPORT",
+                record_date=datetime.now(timezone.utc) - timedelta(days=7),
                 data_json={
-                    "chiefComplaint": "Growth monitoring and development check",
-                    "vitals": {
-                        "weight": "15.5 kg",
-                        "height": "105 cm",
-                        "temperature": "98.4°F",
-                        "pulse": "110 bpm"
-                    },
-                    "developmentalMilestones": "Age-appropriate",
-                    "immunizationStatus": "Upto date",
-                    "assessment": "Healthy child with normal growth and development",
-                    "plan": "Continue breastfeeding, next followup at 6 months"
+                    "reportType": "ECG",
+                    "testName": "Electrocardiogram",
+                    "findings": "Normal sinus rhythm. No ST-T changes. HR: 72 bpm",
+                    "interpretation": "Normal ECG",
+                    "performedBy": "Dr. Mehta",
+                    "department": "Cardiology"
                 },
-                data_text="Pediatric check-up - Child developing normally",
+                data_text="ECG Report: Normal sinus rhythm, HR 72 bpm",
                 was_encrypted=False,
                 decryption_status="NONE"
             )
             db.add(hr2)
             health_records.append(hr2)
             
-            print_info(f"  Created 2 records for {patient.name}")
-        
-        # Anjali Gupta - Gynecology records
-        if len(patients) > 1:
-            patient = db.query(Patient).filter_by(id=patients[1].id).first()
-            
-            # Obstetric consultation
+            # Lab report
             hr3 = HealthRecord(
                 id=uuid.uuid4(),
                 patient_id=patient.id,
-                record_type="CONSULTATION_NOTES",
-                record_date=datetime.now(timezone.utc) - timedelta(days=2),
+                record_type="LAB_REPORT",
+                record_date=datetime.now(timezone.utc) - timedelta(days=5),
                 data_json={
-                    "consultationType": "Prenatal Check-up",
-                    "gestationalWeek": 28,
-                    "vitals": {
-                        "bloodPressure": "110/70 mmHg",
-                        "weight": "72 kg",
-                        "temperature": "98.6°F"
+                    "testName": "Lipid Profile",
+                    "results": {
+                        "totalCholesterol": "210 mg/dL",
+                        "ldl": "130 mg/dL",
+                        "hdl": "45 mg/dL",
+                        "triglycerides": "150 mg/dL"
                     },
-                    "findings": "Normal singleton pregnancy, fundal height appropriate for dates",
-                    "foetalHeartRate": "140-150 bpm",
-                    "investigations": "Routine anomaly scan done, all normal",
-                    "plan": "Continue prenatal vitamins, next followup in 2 weeks"
+                    "status": "BORDERLINE_HIGH",
+                    "lab": "City Diagnostics",
+                    "referenceRange": "Total: <200, LDL: <100, HDL: >40, TG: <150"
                 },
-                data_text="Prenatal check-up at 28 weeks - All parameters normal",
+                data_text="Lipid profile - Total cholesterol 210 mg/dL (borderline high)",
                 was_encrypted=False,
                 decryption_status="NONE"
             )
             db.add(hr3)
             health_records.append(hr3)
             
-            # Ultrasound report
+            print_info(f"  Created 3 records for {patient.name}")
+        
+        # Priya Singh - Orthopedic records
+        if len(patients) > 1:
+            patient = db.query(Patient).filter_by(id=patients[1].id).first()
+            
+            # Prescription
             hr4 = HealthRecord(
                 id=uuid.uuid4(),
                 patient_id=patient.id,
-                record_type="DIAGNOSTIC_REPORT",
-                record_date=datetime.now(timezone.utc) - timedelta(days=1),
+                record_type="PRESCRIPTION",
+                record_date=datetime.now(timezone.utc) - timedelta(days=3),
                 data_json={
-                    "reportType": "Ultrasound",
-                    "testName": "Obstetric Ultrasound - 2nd Trimester",
-                    "findings": "Single live intrauterine pregnancy, appropriate for 28 weeks. Morphology normal. AFI adequate. Cervical length normal.",
-                    "estimation": "Due Date: 2026-04-20",
-                    "performedBy": "Dr. Sharma (Sonologist)",
-                    "department": "Obstetrics"
+                    "medications": [
+                        {
+                            "name": "Ibuprofen 400mg",
+                            "dosage": "1 tablet three times daily",
+                            "duration": "7 days",
+                            "instructions": "Take after meals"
+                        },
+                        {
+                            "name": "Calcium + Vitamin D3",
+                            "dosage": "1 tablet daily",
+                            "duration": "60 days",
+                            "instructions": "Take with breakfast"
+                        }
+                    ],
+                    "doctor": "Dr. Verma (Orthopedic Surgeon)",
+                    "department": "Orthopedics",
+                    "diagnosis": "Post-operative care - ACL reconstruction",
+                    "followUpDate": (datetime.now(timezone.utc) + timedelta(days=14)).isoformat()
                 },
-                data_text="Obstetric ultrasound - Normal fetus with appropriate growth",
+                data_text="Post-surgery prescription for ACL reconstruction",
                 was_encrypted=False,
                 decryption_status="NONE"
             )
             db.add(hr4)
             health_records.append(hr4)
             
-            print_info(f"  Created 2 records for {patient.name}")
-        
-        # Ravi Desai - Dermatology records
-        if len(patients) > 2:
-            patient = db.query(Patient).filter_by(id=patients[2].id).first()
-            
-            # Dermatology consultation
+            # X-ray report
             hr5 = HealthRecord(
                 id=uuid.uuid4(),
                 patient_id=patient.id,
-                record_type="CONSULTATION_NOTES",
-                record_date=datetime.now(timezone.utc) - timedelta(days=10),
+                record_type="DIAGNOSTIC_REPORT",
+                record_date=datetime.now(timezone.utc) - timedelta(days=3),
                 data_json={
-                    "chiefComplaint": "Persistent acne with scarring",
-                    "duration": "3 years",
-                    "distribution": "Face, back and shoulders",
-                    "severity": "Moderate to severe",
-                    "skinType": "Oily",
-                    "assessment": "Acne vulgaris with post-acne scars",
-                    "plan": "Isotretinoin therapy, monthly follow-ups, strict sun protection"
+                    "reportType": "X-RAY",
+                    "testName": "Knee X-Ray (Post-operative)",
+                    "findings": "Surgical hardware in proper position. No signs of infection or displacement. Bone healing progressing normally.",
+                    "interpretation": "Satisfactory post-operative status",
+                    "performedBy": "Dr. Reddy",
+                    "department": "Radiology"
                 },
-                data_text="Dermatology consultation for severe acne management",
+                data_text="Post-operative knee X-ray: Hardware in proper position",
                 was_encrypted=False,
                 decryption_status="NONE"
             )
             db.add(hr5)
             health_records.append(hr5)
             
-            # Prescription
+            print_info(f"  Created 2 records for {patient.name}")
+        
+        # Amit Patel - General health records
+        if len(patients) > 2:
+            patient = db.query(Patient).filter_by(id=patients[2].id).first()
+            
+            # General checkup report
             hr6 = HealthRecord(
                 id=uuid.uuid4(),
                 patient_id=patient.id,
-                record_type="PRESCRIPTION",
-                record_date=datetime.now(timezone.utc) - timedelta(days=10),
+                record_type="CONSULTATION_NOTES",
+                record_date=datetime.now(timezone.utc),
                 data_json={
-                    "medications": [
-                        {
-                            "name": "Isotretinoin 20mg",
-                            "dosage": "1 capsule daily",
-                            "duration": "16 weeks",
-                            "instructions": "Take with fatty meal, with strict contraception"
-                        },
-                        {
-                            "name": "Moisturizer with SPF 50",
-                            "dosage": "Apply twice daily",
-                            "duration": "Ongoing",
-                            "instructions": "Essential during isotretinoin therapy"
-                        }
-                    ],
-                    "doctor": "Dr. Verma (Dermatologist)",
-                    "warnings": "Requires monthly pregnancy tests for females of childbearing age"
+                    "chiefComplaint": "Annual health checkup",
+                    "vitals": {
+                        "bloodPressure": "120/80 mmHg",
+                        "pulse": "72 bpm",
+                        "temperature": "98.6°F",
+                        "respiratoryRate": "16 breaths/min"
+                    },
+                    "generalExamination": "Well-built and nourished",
+                    "systemicExamination": "Within normal limits",
+                    "assessment": "Healthy individual with normal parameters",
+                    "plan": "Continue healthy lifestyle, annual followup"
                 },
-                data_text="Dermatology prescription for acne treatment",
+                data_text="General health checkup - All parameters normal",
                 was_encrypted=False,
                 decryption_status="NONE"
             )
             db.add(hr6)
             health_records.append(hr6)
             
-            print_info(f"  Created 2 records for {patient.name}")
-        
-        # Divya Reddy - ENT records
-        if len(patients) > 3:
-            patient = db.query(Patient).filter_by(id=patients[3].id).first()
-            
-            # ENT consultation
+            # Blood test
             hr7 = HealthRecord(
                 id=uuid.uuid4(),
                 patient_id=patient.id,
-                record_type="CONSULTATION_NOTES",
-                record_date=datetime.now(timezone.utc) - timedelta(days=5),
+                record_type="LAB_REPORT",
+                record_date=datetime.now(timezone.utc),
                 data_json={
-                    "chiefComplaint": "Post-FESS (Functional Endoscopic Sinus Surgery) follow-up",
-                    "surgeryDate": "2025-12-20",
-                    "findings": "Nasal cavity healing well, minimal crusting, patency maintained",
-                    "assessment": "Good post-operative recovery",
-                    "plan": "Continue nasal saline irrigation, regular follow-ups"
+                    "testName": "Complete Blood Count (CBC)",
+                    "results": {
+                        "hemoglobin": "14.5 g/dL",
+                        "wbc": "7500 cells/mcL",
+                        "platelets": "250000 cells/mcL"
+                    },
+                    "status": "NORMAL",
+                    "lab": "City Diagnostics",
+                    "referenceRanges": {
+                        "hemoglobin": "13.5-17.5 g/dL",
+                        "wbc": "4500-11000 cells/mcL",
+                        "platelets": "150000-400000 cells/mcL"
+                    }
                 },
-                data_text="ENT follow-up post sinus surgery - healing well",
+                data_text="CBC Report - All values within normal range",
                 was_encrypted=False,
                 decryption_status="NONE"
             )
             db.add(hr7)
             health_records.append(hr7)
             
-            # ENT examination report
+            print_info(f"  Created 2 records for {patient.name}")
+        
+        # Neha Sharma - Neurology records
+        if len(patients) > 3:
+            patient = db.query(Patient).filter_by(id=patients[3].id).first()
+            
+            # Consultation notes
             hr8 = HealthRecord(
                 id=uuid.uuid4(),
                 patient_id=patient.id,
-                record_type="DIAGNOSTIC_REPORT",
-                record_date=datetime.now(timezone.utc) - timedelta(days=4),
+                record_type="CONSULTATION_NOTES",
+                record_date=datetime.now(timezone.utc) - timedelta(days=5),
                 data_json={
-                    "reportType": "Nasal Endoscopy",
-                    "testName": "Post-operative Nasal Endoscopy",
-                    "findings": "Nasal mucosa pink and healthy, no pus or polyps, patent ostium",
-                    "interpretation": "Successful FESS with good post-operative status",
-                    "performedBy": "Dr. Desai (ENT Specialist)",
-                    "department": "ENT"
+                    "chiefComplaint": "Headache and dizziness",
+                    "history": "Occasional headaches for past 3 months, triggered by stress",
+                    "examination": "Neurological examination normal, no focal deficits",
+                    "assessment": "Tension headache with vertigo",
+                    "plan": "Lifestyle modifications, stress management, follow-up in 2 weeks"
                 },
-                data_text="Nasal endoscopy - Post-operative cavity in good condition",
+                data_text="Neurology consultation for headache and dizziness",
                 was_encrypted=False,
                 decryption_status="NONE"
             )
             db.add(hr8)
             health_records.append(hr8)
             
-            print_info(f"  Created 2 records for {patient.name}")
-        
-        # Suresh Iyer - Gastroenterology records
-        if len(patients) > 4:
-            patient = db.query(Patient).filter_by(id=patients[4].id).first()
-            
-            # GI consultation
+            # MRI report
             hr9 = HealthRecord(
                 id=uuid.uuid4(),
                 patient_id=patient.id,
-                record_type="CONSULTATION_NOTES",
-                record_date=datetime.now(timezone.utc) - timedelta(days=8),
+                record_type="DIAGNOSTIC_REPORT",
+                record_date=datetime.now(timezone.utc) - timedelta(days=4),
                 data_json={
-                    "chiefComplaint": "Chronic GERD and Dyspepsia",
-                    "duration": "2 years",
-                    "symptoms": "Heartburn, bloating, loss of appetite",
-                    "triggers": "Spicy food, stress, late meals",
-                    "assessment": "Gastroesophageal reflux disease with functional dyspepsia",
-                    "plan": "Lifestyle modification, PPI therapy, endoscopy if symptoms persist"
+                    "reportType": "MRI",
+                    "testName": "Brain MRI with contrast",
+                    "findings": "Normal brain parenchyma. No focal lesions, mass effect or abnormal signal intensity.",
+                    "interpretation": "Normal MRI brain",
+                    "performedBy": "Dr. Gupta (Radiologist)",
+                    "department": "Neuroradiology"
                 },
-                data_text="Gastroenterology consultation for GERD management",
+                data_text="Brain MRI - Normal study, no abnormal findings",
                 was_encrypted=False,
                 decryption_status="NONE"
             )
             db.add(hr9)
             health_records.append(hr9)
-            
-            # Endoscopy report
-            hr10 = HealthRecord(
-                id=uuid.uuid4(),
-                patient_id=patient.id,
-                record_type="DIAGNOSTIC_REPORT",
-                record_date=datetime.now(timezone.utc) - timedelta(days=7),
-                data_json={
-                    "reportType": "Upper GI Endoscopy",
-                    "testName": "OGD (Oesophago-Gastro-Duodenoscopy)",
-                    "findings": "Mild oesophagitis in lower third, normal cardia and stomach, normal duodenum",
-                    "biopsyTaken": False,
-                    "interpretation": "Findings consistent with GERD",
-                    "performedBy": "Dr. Kulkarni (Gastroenterologist)",
-                    "department": "Gastroenterology"
-                },
-                data_text="Upper GI endoscopy - Evidence of reflux esophagitis",
-                was_encrypted=False,
-                decryption_status="NONE"
-            )
-            db.add(hr10)
-            health_records.append(hr10)
             
             print_info(f"  Created 2 records for {patient.name}")
         
@@ -686,19 +648,26 @@ def seed_health_records(patients: list) -> list:
 # ============================================================================
 
 def setup_authentication() -> Optional[str]:
-    """Authenticate with ABDM Gateway and get access token."""
+    """
+    Authenticate with ABDM Gateway and get access token.
+    Stores token in .env file.
+    """
     print_section("Gateway Authentication")
     
     try:
+        # Check if gateway is reachable
         response = requests.get(f"{GATEWAY_URL}/health", timeout=5)
         if response.status_code != 200:
             print_warning(f"Gateway health check failed: {response.status_code}")
+            print_info("Proceeding with stored credentials (gateway might start later)")
             return None
     except requests.RequestException as e:
         print_warning(f"Cannot reach gateway at {GATEWAY_URL}: {e}")
+        print_info("Will use default credentials from .env file")
         return None
     
     try:
+        # Prepare authentication request
         auth_payload = {
             "clientId": DEFAULT_CLIENT_ID,
             "clientSecret": DEFAULT_CLIENT_SECRET,
@@ -725,6 +694,7 @@ def setup_authentication() -> Optional[str]:
             access_token = data.get("accessToken")
             expires_in = data.get("expiresIn", 900)
             
+            # Save token to .env
             save_env_variable("ACCESS_TOKEN", access_token)
             save_env_variable("TOKEN_EXPIRES_IN", str(expires_in))
             
@@ -733,18 +703,21 @@ def setup_authentication() -> Optional[str]:
             return access_token
         else:
             print_warning(f"Authentication failed: {response.status_code}")
+            print_info(f"Response: {response.text}")
             return None
     
     except Exception as e:
-        print_warning(f"Failed to authenticate: {e}")
+        print_warning(f"Failed to authenticate with gateway: {e}")
+        print_info("Will continue with local setup")
         return None
 
 def register_bridge_with_gateway(access_token: Optional[str]) -> bool:
-    """Register bridge with ABDM Gateway"""
+    """Register bridge (HIP) with ABDM Gateway"""
     print_section("Bridge Registration with Gateway")
     
     if not access_token:
-        print_warning("No access token. Skipping bridge registration.")
+        print_warning("No access token available. Skipping bridge registration.")
+        print_info("Bridge will need to be registered manually after gateway is running.")
         return False
     
     try:
@@ -771,10 +744,14 @@ def register_bridge_with_gateway(access_token: Optional[str]) -> bool:
         )
         
         if response.status_code == 200:
+            data = response.json()
             print_success(f"✓ Bridge registered successfully")
+            print_info(f"  Bridge ID: {data.get('bridgeId')}")
+            print_info(f"  Entity Type: {data.get('entityType')}")
             return True
         else:
             print_warning(f"Bridge registration failed: {response.status_code}")
+            print_info(f"Response: {response.text}")
             return False
     
     except Exception as e:
@@ -786,7 +763,7 @@ def update_bridge_webhook(access_token: Optional[str]) -> bool:
     print_section("Bridge Webhook Configuration")
     
     if not access_token:
-        print_warning("No access token. Skipping webhook update.")
+        print_warning("No access token available. Skipping webhook update.")
         return False
     
     try:
@@ -812,10 +789,11 @@ def update_bridge_webhook(access_token: Optional[str]) -> bool:
         )
         
         if response.status_code == 200:
-            print_success(f"✓ Webhook configured successfully")
+            print_success(f"✓ Webhook URL configured successfully")
             return True
         else:
             print_warning(f"Webhook update failed: {response.status_code}")
+            print_info(f"Response: {response.text}")
             return False
     
     except Exception as e:
@@ -832,19 +810,19 @@ def register_bridge_services(access_token: Optional[str]) -> bool:
     
     services = [
         {
-            "service_id": "health-records-2",
+            "service_id": "health-records-1",
             "service_name": "Health Records Service",
             "service_type": "HEALTH_RECORDS",
             "description": "Service for retrieving and managing health records"
         },
         {
-            "service_id": "consent-2",
+            "service_id": "consent-1",
             "service_name": "Consent Management Service",
             "service_type": "CONSENT",
             "description": "Service for managing patient consent"
         },
         {
-            "service_id": "linking-2",
+            "service_id": "linking-1",
             "service_name": "Patient Linking Service",
             "service_type": "LINKING",
             "description": "Service for patient identification and linking"
@@ -901,11 +879,11 @@ def register_bridge_services(access_token: Optional[str]) -> bool:
         return False
 
 # ============================================================================
-# CONSENT & LINKING MANAGEMENT
+# CONSENT MANAGEMENT SETUP
 # ============================================================================
 
 def setup_consent_management():
-    """Setup consent management"""
+    """Setup consent management defaults"""
     print_section("Consent Management Configuration")
     
     try:
@@ -916,30 +894,36 @@ def setup_consent_management():
                 "TREATMENT",
                 "DIAGNOSIS",
                 "PRESCRIPTION",
-                "ROUTINE_CARE",
-                "RESEARCH"
+                "ROUTINE_CARE"
             ],
             "dataTypes": [
                 "PRESCRIPTION",
                 "DIAGNOSTIC_REPORT",
                 "LAB_REPORT",
                 "IMMUNIZATION",
-                "CONSULTATION_NOTES",
-                "OBSTETRIC_RECORDS"
+                "CONSULTATION_NOTES"
             ]
         }
         
+        # Save consent config to .env as JSON
         save_env_variable("CONSENT_CONFIG", json.dumps(consent_config))
         
         print_success("✓ Consent management configured")
+        for purpose in consent_config["purposes"]:
+            print_info(f"  Purpose: {purpose}")
+        
         return True
     
     except Exception as e:
         print_error(f"Failed to setup consent management: {e}")
         return False
 
+# ============================================================================
+# LINKING MANAGEMENT SETUP
+# ============================================================================
+
 def setup_linking_management():
-    """Setup patient linking"""
+    """Setup patient linking defaults"""
     print_section("Patient Linking Configuration")
     
     try:
@@ -951,13 +935,17 @@ def setup_linking_management():
             "linkingExpiryDays": 365
         }
         
+        # Save linking config to .env as JSON
         save_env_variable("LINKING_CONFIG", json.dumps(linking_config))
         
         print_success("✓ Linking management configured")
+        print_info(f"  Default Mode: {linking_config['defaultLinkingMode']}")
+        print_info(f"  OTP Expiry: {linking_config['otpExpirySeconds']} seconds")
+        
         return True
     
     except Exception as e:
-        print_error(f"Failed to setup linking: {e}")
+        print_error(f"Failed to setup linking management: {e}")
         return False
 
 # ============================================================================
@@ -965,12 +953,12 @@ def setup_linking_management():
 # ============================================================================
 
 def generate_env_file():
-    """Generate .env file for Hospital 2"""
+    """Generate comprehensive .env file with all required variables"""
     print_section("Environment Configuration")
     
     try:
         # Database configuration
-        save_env_variable("DATABASE_URL", "sqlite:///./abdm_hospital_2.db")
+        save_env_variable("DATABASE_URL", "sqlite:///./abdm_hospital_1.db")
         
         # Application settings
         save_env_variable("APP_NAME", HOSPITAL_NAME)
@@ -1005,7 +993,7 @@ def generate_env_file():
         save_env_variable("JWT_ALGORITHM", "HS256")
         save_env_variable("JWT_EXPIRY_SECONDS", "900")
         
-        print_success("✓ Environment file generated")
+        print_success("✓ Environment file generated with all configurations")
         print_env_file()
         
         return True
@@ -1019,8 +1007,8 @@ def generate_env_file():
 # ============================================================================
 
 def print_summary_report():
-    """Print initialization summary"""
-    print_header("HOSPITAL 2 SYSTEM INITIALIZATION COMPLETE")
+    """Print comprehensive summary of initialization"""
+    print_header("SYSTEM INITIALIZATION COMPLETE")
     
     print_section("Hospital Configuration")
     print_info(f"Hospital Name: {HOSPITAL_NAME}")
@@ -1059,14 +1047,15 @@ def print_summary_report():
     print_info("1. Start the ABDM Gateway (if not running)")
     print_info("2. Start this hospital: uvicorn app.main:app --reload --port 8081")
     print_info("3. Access the hospital UI at http://localhost:8081")
-    print_info("4. Test linking and consent features")
+    print_info("4. Test linking and consent management features")
+    print_info("5. Check /docs endpoint for API documentation")
     
     print_section("Important Files")
     env_path = Path(os.path.dirname(__file__)) / ".env"
     print_info(f"Configuration: {env_path}")
     print_info(f"Database: {Path(os.path.dirname(__file__)) / 'abdm_hospital_2.db'}")
     
-    print_header("Hospital 2 Ready!")
+    print_header("Ready to Use!")
 
 # ============================================================================
 # MAIN EXECUTION
@@ -1076,35 +1065,47 @@ def main():
     """Main initialization orchestrator"""
     
     print_header("ABDM Hospital 2 - Complete System Initialization")
-    print_info("Different patient data, specialties, and configurations")
+    print_info("This script initializes the entire ABDM hospital system")
+    print_info("Database, authentication, bridge management, and default data")
     
     # Step 1: Load or create .env
     load_or_create_env_file()
     
     # Step 2: Initialize database
     if not init_database():
+        print_error("Database initialization failed. Aborting.")
         return False
     
-    # Step 3-6: Seed data
+    # Step 3: Seed patient data
     patients = seed_patients()
     if not patients:
+        print_error("Patient seeding failed. Aborting.")
         return False
     
+    # Step 4: Seed visits
     visits = seed_visits(patients)
+    
+    # Step 5: Seed care contexts
     care_contexts = seed_care_contexts(patients)
+    
+    # Step 6: Seed health records
     health_records = seed_health_records(patients)
     
-    # Step 7: Generate .env file
+    # Step 7: Generate comprehensive .env file
     if not generate_env_file():
+        print_error("Environment file generation failed. Aborting.")
         return False
     
-    # Step 8-9: Setup management systems
+    # Step 8: Setup consent management
     setup_consent_management()
+    
+    # Step 9: Setup linking management
     setup_linking_management()
     
-    # Step 10-12: Gateway integration
+    # Step 10: Authenticate with gateway (optional)
     access_token = setup_authentication()
     
+    # Step 11: Register bridge with gateway (requires token)
     if access_token:
         bridge_registered = register_bridge_with_gateway(access_token)
         webhook_updated = update_bridge_webhook(access_token)
@@ -1118,8 +1119,9 @@ def main():
             print_warning("Services registration incomplete.")
     else:
         print_warning("Skipping gateway registration. Token not available.")
+        print_info("You can register the bridge manually later using the API endpoints.")
     
-    # Step 13: Print summary
+    # Step 12: Print summary
     print_summary_report()
     
     return True

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Body
 from pydantic import BaseModel
 from typing import Optional, List
 from app.database.connection import get_db
@@ -13,6 +13,53 @@ import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# ...existing code...
+
+# PATCH endpoint to update visit status
+@router.patch("/api/visit/{visit_id}/status")
+def update_visit_status(visit_id: str, status: str = Body(...), db: Session = Depends(get_db)):
+    visit_uuid = uuid.UUID(visit_id)
+    visit = db.query(Visit).filter(Visit.id == visit_uuid).first()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    visit.status = status
+    db.commit()
+    db.refresh(visit)
+    return {
+        "visitId": str(visit.id),
+        "status": visit.status
+    }
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Body
+from pydantic import BaseModel
+from typing import Optional, List
+from app.database.connection import get_db
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+from app.database.models import Visit, Patient
+import uuid
+from datetime import datetime
+from app.services import gateway_service
+import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+# PATCH endpoint to update visit status
+@router.patch("/api/visit/{visit_id}/status")
+def update_visit_status(visit_id: str, status: str = Body(...), db: Session = Depends(get_db)):
+    visit_uuid = uuid.UUID(visit_id)
+    visit = db.query(Visit).filter(Visit.id == visit_uuid).first()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    visit.status = status
+    db.commit()
+    db.refresh(visit)
+    return {
+        "visitId": str(visit.id),
+        "status": visit.status
+    }
 
 # Models
 class VisitRequest(BaseModel):

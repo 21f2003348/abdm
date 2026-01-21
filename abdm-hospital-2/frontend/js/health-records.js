@@ -2,9 +2,6 @@
 
 let currentRecord = null;
 let allHealthRecords = [];
-let allVisits = [];
-let selectedVisit = null;
-let selectedCareContext = null;
 
 // Initialize page
 document.addEventListener("DOMContentLoaded", function () {
@@ -12,18 +9,26 @@ document.addEventListener("DOMContentLoaded", function () {
   const today = new Date().toISOString().split("T")[0];
   document.getElementById("recordDate").value = today;
 
-  // Load visits and health records
-  loadActiveVisits();
+  // Load health records
   loadHealthRecords();
+
+  // Load active visits for dropdown
+  loadActiveVisitsDropdown();
 
   // Event listeners
   document
     .getElementById("createHealthRecordForm")
     .addEventListener("submit", handleCreateHealthRecord);
 
-  document
-    .getElementById("visitSelect")
-    .addEventListener("change", handleVisitSelection);
+  const visitDropdown = document.getElementById("visitDropdown");
+  if (visitDropdown) {
+    visitDropdown.addEventListener("change", handleVisitSelection);
+  }
+
+  const searchPatientBtn = document.getElementById("searchPatientBtn");
+  if (searchPatientBtn) {
+    searchPatientBtn.addEventListener("click", handleSearchPatient);
+  }
 
   document
     .getElementById("applyFiltersBtn")
@@ -32,177 +37,140 @@ document.addEventListener("DOMContentLoaded", function () {
     .getElementById("clearFiltersBtn")
     .addEventListener("click", clearFilters);
 
-  // Check for URL params
+  // Check for URL params (legacy support)
   const urlParams = new URLSearchParams(window.location.search);
-  const patientId = urlParams.get("patient_id");
   const visitId = urlParams.get("visit_id");
-  const contextId = urlParams.get("context_id");
-
   if (visitId) {
-    // Find and select the visit from loaded visits
+    // Try to select visit from dropdown if it exists
     setTimeout(() => {
-      const visitSelect = document.getElementById("visitSelect");
-      const option = Array.from(visitSelect.options).find(
-        (o) => o.value === visitId,
-      );
-      if (option) {
-        visitSelect.value = visitId;
-        handleVisitSelection();
+      const dropdown = document.getElementById("visitDropdown");
+      if (dropdown) {
+        const option = Array.from(dropdown.options).find(
+          (opt) => opt.dataset.visitId === visitId,
+        );
+        if (option) {
+          dropdown.value = option.value;
+          handleVisitSelection({ target: dropdown });
+        }
       }
     }, 500);
   }
-
-  if (patientId) {
-    document.getElementById("filterPatientId").value = patientId;
-  }
-
-  if (contextId) {
-    document.getElementById("contextId").value = contextId;
-  }
 });
 
-// Load active visits for the dropdown
-async function loadActiveVisits() {
+// Load active visits and populate dropdown
+async function loadActiveVisitsDropdown() {
+  const dropdown = document.getElementById("visitDropdown");
+  const statusElement = document.getElementById("visitDropdownStatus");
+
+  if (!dropdown) {
+    console.error("Visit dropdown element not found!");
+    return;
+  }
+
+  dropdown.innerHTML = '<option value="">-- Select Visit --</option>';
+  dropdown.disabled = true;
+
+  if (statusElement) {
+    statusElement.textContent = "Loading active visits...";
+    statusElement.className = "text-muted small";
+  }
+
   try {
-    const visits = await api.visits.list();
-    allVisits = visits.filter(
-      (v) => v.status === "Scheduled" || v.status === "In Progress",
-    );
+    const visits = await api.visits.getActive();
+    console.log("[DEBUG] Active visits fetched:", visits);
 
-    const visitSelect = document.getElementById("visitSelect");
-    visitSelect.innerHTML = '<option value="">Select an active visit</option>';
+    if (!Array.isArray(visits)) {
+      throw new Error("/api/visit/active did not return an array.");
+    }
 
-    allVisits.forEach((visit) => {
+    if (visits.length === 0) {
+      dropdown.innerHTML =
+        '<option value="">No active visits available</option>';
+      dropdown.disabled = true;
+      if (statusElement) {
+        statusElement.textContent = "No active visits available.";
+        statusElement.className = "text-muted small";
+      }
+      return;
+    }
+
+    visits.forEach((visit) => {
       const option = document.createElement("option");
-      option.value = visit.visitId || visit.id;
-      const visitDate = new Date(
-        visit.visitDate || visit.visit_date,
-      ).toLocaleDateString();
-      option.textContent = `${visit.patientName || "Unknown"} - ${visit.visitType || "Visit"} (${visitDate})`;
-      visitSelect.appendChild(option);
+      option.value = visit.visitId;
+      // Show patient name, visit type, department, and date
+      let displayText = `${visit.patientName || "Unknown"} - ${visit.visitType} (${visit.department})`;
+      if (visit.visitDate) {
+        const date = new Date(visit.visitDate);
+        displayText += ` - ${date.toLocaleDateString()}`;
+      }
+      option.textContent = displayText;
+      option.dataset.visit = JSON.stringify(visit);
+      dropdown.appendChild(option);
     });
+
+    dropdown.disabled = false;
+    if (statusElement) {
+      statusElement.textContent = `Loaded ${visits.length} active visit(s).`;
+      statusElement.className = "text-success small";
+    }
+    console.log(
+      `[DEBUG] Dropdown populated with ${visits.length} active visits`,
+    );
   } catch (error) {
-    console.warn("Failed to load visits:", error.message);
-    utils.showError("Could not load active visits");
+    console.error("Error loading active visits dropdown:", error);
+    dropdown.innerHTML = '<option value="">Error loading visits</option>';
+    dropdown.disabled = true;
+    if (statusElement) {
+      statusElement.textContent = `Error: ${error.message}`;
+      statusElement.className = "text-danger small";
+    }
+    utils.showError("Failed to load active visits: " + error.message);
   }
 }
 
-// Handle visit selection
-async function handleVisitSelection() {
-  const visitSelect = document.getElementById("visitSelect");
-  const selectedVisitId = visitSelect.value;
+// Handle visit selection from dropdown
+function handleVisitSelection(e) {
+  const dropdown = e.target || document.getElementById("visitDropdown");
+  const selectedOption = dropdown.options[dropdown.selectedIndex];
 
-  if (!selectedVisitId) {
-    // Clear fields
+  if (selectedOption.value) {
+    try {
+      const visit = JSON.parse(selectedOption.dataset.visit);
+
+      // Auto-fill hidden fields
+      document.getElementById("patientId").value = visit.patientId;
+      document.getElementById("visitId").value = visit.visitId;
+      document.getElementById("doctorName").value = visit.doctorId || "";
+      document.getElementById("department").value = visit.department || "";
+
+      // Auto-fill visible fields
+      document.getElementById("recordDate").value = visit.visitDate
+        ? visit.visitDate.split("T")[0]
+        : new Date().toISOString().split("T")[0];
+
+      // Show visit details
+      document.getElementById("selectedPatientName").textContent =
+        visit.patientName || "Unknown";
+      document.getElementById("selectedVisitType").textContent =
+        visit.visitType || "-";
+      document.getElementById("selectedDepartment").textContent =
+        visit.department || "-";
+      document.getElementById("selectedDoctor").textContent =
+        visit.doctorId || "-";
+      document.getElementById("visitDetailsDiv").style.display = "block";
+
+      utils.showSuccess("Visit selected! Fields auto-filled.");
+    } catch (error) {
+      console.error("Error parsing visit data:", error);
+      utils.showError("Error selecting visit");
+    }
+  } else {
+    // Clear fields if no visit selected
     document.getElementById("patientId").value = "";
     document.getElementById("visitId").value = "";
-    document.getElementById("contextId").value = "";
-    document.getElementById("visitInfo").style.display = "none";
-    selectedVisit = null;
-    selectedCareContext = null;
-    return;
-  }
-
-  // Find visit in allVisits
-  selectedVisit = allVisits.find(
-    (v) => (v.visitId || v.id) === selectedVisitId,
-  );
-
-  if (!selectedVisit) {
-    utils.showError("Visit not found");
-    return;
-  }
-
-  // Auto-fill fields
-  document.getElementById("patientId").value =
-    selectedVisit.patientId || selectedVisit.patient_id;
-  document.getElementById("visitId").value = selectedVisitId;
-
-  // Set doctor and department if available
-  if (selectedVisit.doctorId || selectedVisit.doctor_id) {
-    document.getElementById("doctorName").value =
-      selectedVisit.doctorId || selectedVisit.doctor_id;
-  }
-  if (selectedVisit.department) {
-    document.getElementById("department").value = selectedVisit.department;
-  }
-
-  // Set record date to visit date
-  const visitDate = new Date(
-    selectedVisit.visitDate || selectedVisit.visit_date,
-  );
-  document.getElementById("recordDate").value = visitDate
-    .toISOString()
-    .split("T")[0];
-
-  // Show visit info
-  const visitDate_display = new Date(
-    selectedVisit.visitDate || selectedVisit.visit_date,
-  ).toLocaleDateString();
-  document.getElementById("visitPatientText").textContent =
-    selectedVisit.patientName || "Unknown";
-  document.getElementById("visitDetailsText").textContent =
-    selectedVisit.visitType || "Visit";
-  document.getElementById("visitMetaText").textContent =
-    `${selectedVisit.department || "Department"} • ${visitDate_display}`;
-  document.getElementById("visitInfo").style.display = "block";
-
-  // Auto-generate and link care context
-  await createAndLinkCareContext(
-    selectedVisit.patientId || selectedVisit.patient_id,
-    selectedVisit.department || "General",
-    selectedVisit.visitType || "Visit",
-  );
-}
-
-// Create and link care context to gateway
-async function createAndLinkCareContext(patientId, department, visitType) {
-  try {
-    utils.showLoading();
-
-    // Create care context via API
-    const contextName = `${department} Care - ${new Date().getFullYear()}`;
-    const response = await api.careContexts.createAndLink({
-      patientId: patientId,
-      contextName: contextName,
-      description: `${visitType} visit care context`,
-    });
-
-    console.log("Care context API response:", response);
-
-    if (response.localContext && response.localContext.contextId) {
-      selectedCareContext = response.localContext.contextId;
-      document.getElementById("contextId").value = selectedCareContext;
-      utils.hideLoading();
-
-      // Check if gateway linking succeeded
-      if (
-        response.gatewayResponse &&
-        response.gatewayResponse.status === "pending"
-      ) {
-        utils.showInfo(
-          `✅ Care context created locally (Gateway: ${response.gatewayResponse.message || "unavailable"})`,
-        );
-      } else {
-        utils.showInfo("✅ Care context created and linked to ABDM Gateway");
-      }
-    } else {
-      utils.hideLoading();
-      console.warn("Care context response missing contextId:", response);
-      utils.showError(
-        "Could not create care context - will retry during record save",
-      );
-    }
-  } catch (error) {
-    utils.hideLoading();
-    console.error("Error creating care context:", error);
-    console.error("Full error details:", error.message, error.stack);
-    // Don't block record creation if care context fails
-    utils.showInfo(
-      "⚠️ Care context creation failed: " +
-        error.message +
-        " - will retry when you save the record",
-    );
+    document.getElementById("doctorName").value = "";
+    document.getElementById("department").value = "";
+    document.getElementById("visitDetailsDiv").style.display = "none";
   }
 }
 
@@ -211,65 +179,33 @@ async function loadHealthRecords() {
   try {
     utils.showLoading();
 
+    // Try to get health records from API
     const filterPatientId = document.getElementById("filterPatientId").value;
 
     let healthRecords = [];
-
     if (filterPatientId) {
-      // Load records for specific patient
-      console.log("Loading records for patient:", filterPatientId);
       healthRecords = await api.healthRecords.getByPatient(filterPatientId);
     } else {
-      // Load records for all patients
+      // Try to get all records
       try {
-        console.log("Loading all patients...");
-        const patientsResponse = await api.patients.list();
-        console.log("All patients:", patientsResponse);
-
-        // Fetch records for each patient
-        healthRecords = [];
-        for (const patient of patientsResponse) {
-          try {
-            const patientRecords = await api.healthRecords.getByPatient(
-              patient.patientId,
-            );
-            healthRecords = healthRecords.concat(patientRecords);
-          } catch (error) {
-            console.log(
-              `Could not load records for patient ${patient.patientId}:`,
-              error.message,
-            );
-          }
-        }
-        console.log("Loaded all health records:", healthRecords);
+        healthRecords = await api.healthRecords.list();
       } catch (error) {
-        console.log("Could not load patients or their records:", error.message);
+        console.log("List endpoint not available, showing empty list");
         healthRecords = [];
       }
-    }
-
-    // Ensure healthRecords is an array
-    if (!Array.isArray(healthRecords)) {
-      console.warn("API returned non-array response:", healthRecords);
-      healthRecords = [];
     }
 
     allHealthRecords = healthRecords;
     renderHealthRecordsTable(healthRecords);
   } catch (error) {
-    console.error("Failed to load health records:", error);
     utils.showError("Failed to load health records: " + error.message);
-
-    const tbody = document.getElementById("healthRecordsTableBody");
-    if (tbody) {
-      tbody.innerHTML = `
+    document.getElementById("healthRecordsTableBody").innerHTML = `
             <tr>
                 <td colspan="7" class="text-center text-danger">
-                    <i class="fas fa-exclamation-triangle"></i> Failed to load health records: ${error.message}
+                    <i class="fas fa-exclamation-triangle"></i> Failed to load health records
                 </td>
             </tr>
         `;
-    }
   } finally {
     utils.hideLoading();
   }
@@ -293,43 +229,23 @@ function renderHealthRecordsTable(healthRecords) {
 
   tbody.innerHTML = healthRecords
     .map((record) => {
-      // Handle both old and new API response formats
-      // New format: type, date, receivedAt
-      // Old format: record_type, record_date, created_at
-      const recordType = record.type || record.record_type || "N/A";
-      const recordDate = record.date || record.record_date;
-      const formattedDate = recordDate ? utils.formatDate(recordDate) : "N/A";
-
+      // Handle both ISO and formatted dates
+      const recordDate = record.date
+        ? utils.formatDate(record.date)
+        : utils.formatDate(record.receivedAt);
       const recordId = record.id || record.record_id;
-      const patientName =
-        record.patientName || record.patient_name || "Unknown";
-      const patientId = record.patientId || record.patient_id || "Unknown";
-      const title = record.title || recordType || "Record";
+      const patientName = record.patientName || "Unknown";
+      const patientId = record.patientId || "Unknown";
+      const title = record.title || record.type || "Record";
+      const recordType = record.type || "N/A";
 
       // Extract doctor name from data if available
-      let doctorName = "N/A";
-      if (record.data) {
-        if (typeof record.data === "string") {
-          try {
-            const dataObj = JSON.parse(record.data);
-            doctorName =
-              dataObj.doctorName ||
-              dataObj.performedBy ||
-              dataObj.prescribedBy ||
-              dataObj.doctor_name ||
-              "N/A";
-          } catch (e) {
-            doctorName = "N/A";
-          }
-        } else {
-          doctorName =
-            record.data.doctorName ||
-            record.data.performedBy ||
+      const doctorName =
+        (record.data &&
+          (record.data.performedBy ||
             record.data.prescribedBy ||
-            record.data.doctor_name ||
-            "N/A";
-        }
-      }
+            record.data.doctor_name)) ||
+        "N/A";
 
       return `
             <tr>
@@ -340,7 +256,7 @@ function renderHealthRecordsTable(healthRecords) {
                 </td>
                 <td>${title}</td>
                 <td><span class="badge bg-info">${recordType}</span></td>
-                <td>${formattedDate}</td>
+                <td>${recordDate}</td>
                 <td>${doctorName}</td>
                 <td>
                     <button class="btn btn-sm btn-primary" onclick="viewHealthRecord('${recordId}')">
@@ -358,95 +274,117 @@ async function handleCreateHealthRecord(e) {
   e.preventDefault();
 
   // Validation
-  const visitId = document.getElementById("visitSelect").value;
+  const visitId = document.getElementById("visitId").value.trim();
   const patientId = document.getElementById("patientId").value.trim();
   const recordType = document.getElementById("recordType").value;
   const recordDate = document.getElementById("recordDate").value;
   const title = document.getElementById("title").value.trim();
 
-  if (!visitId) {
-    utils.showError("Please select a visit first");
-    return;
-  }
-
-  if (!patientId || !recordType || !recordDate || !title) {
-    utils.showError("Please fill in all required fields");
+  if (!visitId || !patientId || !recordType || !recordDate || !title) {
+    utils.showError("Please select a visit and fill in all required fields");
     return;
   }
 
   try {
     utils.showLoading();
 
-    // Prepare health record data
-    const recordData = {
+    const doctorName = document.getElementById("doctorName").value.trim();
+    const department = document.getElementById("department").value.trim();
+    const content = document.getElementById("content").value.trim();
+    const fileUrl = document.getElementById("fileUrl").value.trim();
+
+    // Simplified payload - care context and linking request will be auto-generated
+    const payload = {
       patientId,
       recordType,
       recordDate,
       title,
+      content: content || null,
+      doctorName: doctorName || null,
+      department: department || null,
+      fileUrl: fileUrl || null,
       data: {
-        title: title,
-        recordType: recordType,
-        doctorName:
-          document.getElementById("doctorName").value.trim() || "Not specified",
-        department:
-          document.getElementById("department").value.trim() || "General",
-        visitId: document.getElementById("visitId").value || visitId,
-        contentText: document.getElementById("content").value.trim() || null,
-        fileUrl: document.getElementById("fileUrl").value.trim() || null,
+        title,
+        content: content || null,
+        doctorName: doctorName || null,
+        department: department || null,
+        fileUrl: fileUrl || null,
+        visitId: visitId,
       },
-      dataText: document.getElementById("content").value.trim() || null,
+      dataText: content || null,
     };
 
-    // Step 1: Create health record in database
-    const createResponse = await api.healthRecords.create(recordData);
-    console.log("Health record created:", createResponse);
+    await api.healthRecords.create(payload);
 
-    // Step 2: Create care context if not already created
-    if (!selectedCareContext && selectedVisit) {
-      await createAndLinkCareContext(
-        patientId,
-        document.getElementById("department").value || "General",
-        recordType,
-      );
-    }
-
-    // Step 3: Notify gateway about the new record
-    try {
-      const notifyResponse = await api.healthRecords.notifyGateway(
-        patientId,
-        createResponse.id,
-      );
-      console.log("Gateway notified:", notifyResponse);
-      utils.showSuccess(
-        "✅ Health record created, linked to care context, and registered with ABDM Gateway!",
-      );
-    } catch (notifyError) {
-      console.warn("Gateway notification failed:", notifyError.message);
-      utils.showSuccess(
-        "✅ Health record created and linked to care context (gateway notification pending)",
-      );
-    }
-
+    utils.showSuccess(
+      "Health record created successfully! Care context and linking request are being generated.",
+    );
     e.target.reset();
     document.getElementById("recordDate").value = new Date()
       .toISOString()
       .split("T")[0];
+    document.getElementById("visitDetailsDiv").style.display = "none";
 
-    // Reset visit selection
-    document.getElementById("visitSelect").value = "";
-    document.getElementById("patientId").value = "";
-    document.getElementById("visitId").value = "";
-    document.getElementById("contextId").value = "";
-    document.getElementById("visitInfo").style.display = "none";
-    selectedVisit = null;
-    selectedCareContext = null;
-
+    // Reload dropdown to refresh active visits
+    await loadActiveVisitsDropdown();
     await loadHealthRecords();
   } catch (error) {
     utils.showError("Failed to create health record: " + error.message);
   } finally {
     utils.hideLoading();
   }
+}
+
+// Handle patient search
+async function handleSearchPatient() {
+  const mobile = document.getElementById("searchMobile").value;
+
+  if (!mobile || mobile.length !== 10) {
+    utils.showError("Please enter a valid 10-digit mobile number");
+    return;
+  }
+
+  try {
+    utils.showLoading();
+    const patient = await api.patients.search(mobile);
+
+    if (patient) {
+      document.getElementById("searchResults").innerHTML = `
+                <div class="card">
+                    <div class="card-body">
+                        <h6>${patient.name}</h6>
+                        <p class="mb-2">
+                            <strong>Patient ID:</strong> ${patient.patient_id}<br>
+                            <strong>Mobile:</strong> ${patient.mobile_number}
+                        </p>
+                        <button class="btn btn-sm btn-primary" onclick="selectPatient('${patient.patient_id}', '${patient.name}')">
+                            <i class="fas fa-check"></i> Select Patient
+                        </button>
+                    </div>
+                </div>
+            `;
+    } else {
+      document.getElementById("searchResults").innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> No patient found with this mobile number
+                </div>
+            `;
+    }
+  } catch (error) {
+    utils.showError("Search failed: " + error.message);
+  } finally {
+    utils.hideLoading();
+  }
+}
+
+// Select patient from search
+function selectPatient(patientId, patientName) {
+  document.getElementById("patientId").value = patientId;
+  const modal = bootstrap.Modal.getInstance(
+    document.getElementById("patientSearchModal"),
+  );
+  modal.hide();
+  utils.showSuccess(`Selected patient: ${patientName}`);
 }
 
 // Apply filters
@@ -468,21 +406,19 @@ async function applyFilters() {
 
       if (recordType) {
         filteredRecords = filteredRecords.filter(
-          (r) => (r.type || r.record_type) === recordType,
+          (r) => r.record_type === recordType,
         );
       }
 
       if (startDate) {
-        const recordDateField = (r) => r.date || r.record_date;
         filteredRecords = filteredRecords.filter(
-          (r) => recordDateField(r) >= startDate,
+          (r) => r.record_date >= startDate,
         );
       }
 
       if (endDate) {
-        const recordDateField = (r) => r.date || r.record_date;
         filteredRecords = filteredRecords.filter(
-          (r) => recordDateField(r) <= endDate,
+          (r) => r.record_date <= endDate,
         );
       }
 
@@ -498,22 +434,18 @@ async function applyFilters() {
 
     if (recordType) {
       filteredRecords = filteredRecords.filter(
-        (r) => (r.type || r.record_type) === recordType,
+        (r) => r.record_type === recordType,
       );
     }
 
     if (startDate) {
-      const recordDateField = (r) => r.date || r.record_date;
       filteredRecords = filteredRecords.filter(
-        (r) => recordDateField(r) >= startDate,
+        (r) => r.record_date >= startDate,
       );
     }
 
     if (endDate) {
-      const recordDateField = (r) => r.date || r.record_date;
-      filteredRecords = filteredRecords.filter(
-        (r) => recordDateField(r) <= endDate,
-      );
+      filteredRecords = filteredRecords.filter((r) => r.record_date <= endDate);
     }
 
     renderHealthRecordsTable(filteredRecords);
@@ -533,106 +465,109 @@ function clearFilters() {
 async function viewHealthRecord(recordId) {
   try {
     utils.showLoading();
+    console.log("[DEBUG] viewHealthRecord called with recordId:", recordId);
+    console.log("[DEBUG] allHealthRecords length:", allHealthRecords.length);
 
-    // Find record in current list
+    // Find record in current list - handle both id and record_id
     const record = allHealthRecords.find(
-      (r) => (r.record_id || r.id) === recordId,
+      (r) => (r.id || r.record_id) === recordId,
     );
 
     if (!record) {
+      console.error("[DEBUG] Record not found. Available IDs:", allHealthRecords.map(r => r.id || r.record_id));
       utils.showError("Health record not found");
+      utils.hideLoading();
       return;
     }
 
+    console.log("[DEBUG] Found record:", record);
     currentRecord = record;
 
-    // Handle both API response formats
-    const recordType = record.type || record.record_type || "N/A";
-    const recordDate = record.date || record.record_date;
-    const formattedRecordDate = recordDate
-      ? utils.formatDate(recordDate)
-      : "N/A";
-    const formattedCreatedAt =
-      record.receivedAt || record.created_at
-        ? utils.formatDate(record.receivedAt || record.created_at)
-        : "N/A";
-    const formattedUpdatedAt = record.updated_at
-      ? utils.formatDate(record.updated_at)
-      : "N/A";
-
-    let doctorName = "N/A";
-    let department = "N/A";
-    let contentText = "No content provided";
-
-    // Extract data from record.data
-    if (record.data) {
-      if (typeof record.data === "string") {
-        try {
-          const dataObj = JSON.parse(record.data);
-          doctorName =
-            dataObj.doctorName ||
-            dataObj.performedBy ||
-            dataObj.prescribedBy ||
-            dataObj.doctor_name ||
-            "N/A";
-          department = dataObj.department || "N/A";
-          contentText =
-            dataObj.contentText || dataObj.content || "No content provided";
-        } catch (e) {
-          contentText = record.data;
-        }
+    // Extract data from data_json/data field if needed
+    const data = record.data || {};
+    
+    // Helper function to safely set text content
+    const setTextContent = (elementId, value) => {
+      const element = document.getElementById(elementId);
+      if (element) {
+        element.textContent = value;
       } else {
-        doctorName =
-          record.data.doctorName ||
-          record.data.performedBy ||
-          record.data.prescribedBy ||
-          record.data.doctor_name ||
-          "N/A";
-        department = record.data.department || "N/A";
-        contentText =
-          record.data.contentText ||
-          record.data.content ||
-          "No content provided";
+        console.warn(`[DEBUG] Element ${elementId} not found`);
       }
+    };
+    
+    // Populate modal - handle both camelCase and snake_case field names
+    const recordIdValue = record.id || record.record_id || "N/A";
+    setTextContent("detailRecordId", recordIdValue);
+    
+    const recordType = record.type || record.record_type || "N/A";
+    setTextContent("detailRecordType", recordType);
+    
+    const patientId = record.patientId || record.patient_id || "N/A";
+    setTextContent("detailPatientId", patientId);
+    
+    const patientName = record.patientName || record.patient_name || "N/A";
+    setTextContent("detailPatientName", patientName);
+    
+    // Visit ID - check data_json first, then top-level
+    const visitId = record.visitId || record.visit_id || data.visitId || data.visit_id || "N/A";
+    setTextContent("detailVisitId", visitId);
+    
+    // Care Context ID
+    const contextId = record.careContextId || record.care_context_id || record.contextId || record.context_id || "N/A";
+    setTextContent("detailContextId", contextId);
+    
+    const recordDate = record.date || record.record_date;
+    setTextContent("detailRecordDate", utils.formatDate(recordDate) || "N/A");
+    
+    // Title - check data_json first, then top-level
+    const title = record.title || data.title || record.type || "N/A";
+    setTextContent("detailTitle", title);
+    
+    // Doctor Name - check data_json first (doctorName or doctor_name), then top-level
+    const doctorName = record.doctor_name || data.doctorName || data.doctor_name || "N/A";
+    setTextContent("detailDoctorName", doctorName);
+    
+    // Department - check data_json first, then top-level
+    const department = record.department || data.department || "N/A";
+    setTextContent("detailDepartment", department);
+    
+    // Content - check data_json first, then top-level, then dataText
+    const content = record.content || data.content || record.dataText || record.data_text || "No content provided";
+    setTextContent("detailContent", content);
+    
+    const createdAt = record.created_at;
+    setTextContent("detailCreatedAt", utils.formatDate(createdAt) || "N/A");
+    
+    const updatedAt = record.updated_at;
+    setTextContent("detailUpdatedAt", utils.formatDate(updatedAt) || "N/A");
+
+    // Show/hide file URL - check data_json first, then top-level
+    const fileUrl = record.fileUrl || record.file_url || data.fileUrl || data.file_url;
+    const fileUrlSection = document.getElementById("fileUrlSection");
+    const detailFileUrl = document.getElementById("detailFileUrl");
+    if (fileUrl && fileUrlSection && detailFileUrl) {
+      fileUrlSection.style.display = "block";
+      detailFileUrl.href = fileUrl;
+    } else if (fileUrlSection) {
+      fileUrlSection.style.display = "none";
     }
 
-    // Populate modal
-    document.getElementById("detailRecordId").textContent =
-      record.id || record.record_id;
-    document.getElementById("detailRecordType").textContent = recordType;
-    document.getElementById("detailPatientId").textContent =
-      record.patientId || record.patient_id || "N/A";
-    document.getElementById("detailPatientName").textContent =
-      record.patientName || record.patient_name || "N/A";
-    document.getElementById("detailVisitId").textContent =
-      record.visitId || record.visit_id || "N/A";
-    document.getElementById("detailContextId").textContent =
-      record.contextId || record.context_id || "N/A";
-    document.getElementById("detailRecordDate").textContent =
-      formattedRecordDate;
-    document.getElementById("detailTitle").textContent =
-      record.title || recordType || "Record";
-    document.getElementById("detailDoctorName").textContent = doctorName;
-    document.getElementById("detailDepartment").textContent = department;
-    document.getElementById("detailContent").textContent = contentText;
-    document.getElementById("detailCreatedAt").textContent = formattedCreatedAt;
-    document.getElementById("detailUpdatedAt").textContent = formattedUpdatedAt;
-
-    // Show/hide file URL
-    if (record.fileUrl || (record.data && record.data.fileUrl)) {
-      document.getElementById("fileUrlSection").style.display = "block";
-      const fileUrl = record.fileUrl || record.data.fileUrl;
-      document.getElementById("detailFileUrl").href = fileUrl;
-    } else {
-      document.getElementById("fileUrlSection").style.display = "none";
-    }
-
+    console.log("[DEBUG] Modal populated, showing modal...");
     // Show modal
-    const modal = new bootstrap.Modal(
-      document.getElementById("recordDetailsModal"),
-    );
+    const modalElement = document.getElementById("recordDetailsModal");
+    if (!modalElement) {
+      console.error("[DEBUG] Modal element not found!");
+      utils.showError("Modal element not found");
+      utils.hideLoading();
+      return;
+    }
+    
+    const modal = new bootstrap.Modal(modalElement);
     modal.show();
+    console.log("[DEBUG] Modal shown");
   } catch (error) {
+    console.error("[DEBUG] Error in viewHealthRecord:", error);
     utils.showError("Failed to load health record details: " + error.message);
   } finally {
     utils.hideLoading();
@@ -641,3 +576,4 @@ async function viewHealthRecord(recordId) {
 
 // Make functions globally accessible
 window.viewHealthRecord = viewHealthRecord;
+window.selectPatient = selectPatient;
